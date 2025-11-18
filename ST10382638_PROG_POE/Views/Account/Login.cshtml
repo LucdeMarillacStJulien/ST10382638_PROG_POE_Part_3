@@ -1,0 +1,58 @@
+﻿@model ST10382638_PROG_POE.Models.Login
+
+@{
+    ViewData["Title"] = "Login";
+}
+
+<div class="p-16">
+    <h1 class="mb-16">Sign in to the CMC Portal</h1>
+
+    <div class="row">
+        <div class="col-12 col-md-6 col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    Enter your credentials
+                </div>
+                <div class="card-body">
+                    @* Summary of model validation errors *@
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                    <form asp-action="Login" method="post" class="hover-only-inputs">
+                        @Html.AntiForgeryToken()
+
+                        @* Email *@
+                        <div class="mb-3">
+                            <label asp-for="Email" class="form-label"></label>
+                            <input asp-for="Email" class="form-control" />
+                            <span asp-validation-for="Email" class="text-danger"></span>
+                        </div>
+
+                        @* Password *@
+                        <div class="mb-3">
+                            <label asp-for="Password" class="form-label"></label>
+                            <input asp-for="Password" class="form-control" />
+                            <span asp-validation-for="Password" class="text-danger"></span>
+                        </div>
+
+                        @* Remember me *@
+                        <div class="form-check mb-3">
+                            <input asp-for="RememberMe" class="form-check-input" />
+                            <label asp-for="RememberMe" class="form-check-label"></label>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">
+                            Sign In
+                        </button>
+                    </form>
+                </div>
+                <div class="card-footer text-muted">
+                    Use the email/password assigned to your role (Lecturer, Coordinator, Manager, HR).
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @await Html.PartialAsync("_ValidationScriptsPartial")
+}
