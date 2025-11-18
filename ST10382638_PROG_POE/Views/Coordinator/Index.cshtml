@@ -128,10 +128,8 @@
                         @* ---- Actions: Verify, Download, Reject ---- *@
                         <div class="mt-auto d-flex align-items-center justify-content-between gap-2">
                             @* Verify (Coordinator) -> ClaimController.Verify (POST) *@
-                            <form asp-controller="Claim" asp-action="Verify" asp-route-email="@email" method="post" class="m-0">
+                            <form asp-controller="Claim" asp-action="Verify" method="post" class="m-0">
                                 <input type="hidden" name="id" value="@c.ClaimId" />
-                                @* Hidden email field included as-is per original markup *@
-                                <input type="hidden" name="=email" value="@email" />
                                 <button type="submit" class="btn btn-neon btn-neon-approve">Verify</button>
                             </form>
 
@@ -147,10 +145,9 @@
                             }
 
                             @* Reject (Coordinator) -> ClaimController.Reject (POST) *@
-                            <form asp-controller="Claim" asp-action="Reject" asp-route-email="@email" method="post" class="m-0">
+                            <form asp-controller="Claim" asp-action="Reject" method="post" class="m-0">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="id" value="@c.ClaimId" />
-                                <input type="hidden" name="email" value="@email" />
                                 <button type="submit" class="btn btn-neon btn-neon-reject">Reject</button>
                             </form>
                         </div>

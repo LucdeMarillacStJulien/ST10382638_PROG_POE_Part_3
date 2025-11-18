@@ -86,8 +86,9 @@ namespace ST10382638_PROG_POE.Controllers
         /// <returns>On success redirects to Lecturer dashboard; otherwise re-renders form with errors.</returns>
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(Claim claim, List<IFormFile> files, string lecturerEmail)
+        public async Task<IActionResult> Create(Claim claim, List<IFormFile> files)
         {
+            var currentEmail = User?.Identity?.Name;
             // ------------------------------------------------------------
             // 0) PRE-VALIDATION: Files (type + size) and HoursWorked
             //    - Fail fast to give immediate feedback and avoid partial writes.
@@ -153,9 +154,7 @@ namespace ST10382638_PROG_POE.Controllers
                     .FirstOrDefaultAsync(lp => lp.LecturerProfileId == claim.LecturerProfileId);
 
                 ViewBag.Lecturer = lecturerVm;
-                ViewBag.Email = !string.IsNullOrWhiteSpace(lecturerEmail)
-                                    ? lecturerEmail
-                                    : lecturerVm?.User?.Email ?? "";
+                ViewBag.Email = !string.IsNullOrWhiteSpace(currentEmail);
 
                 return View(claim); // nothing saved
             }
@@ -249,9 +248,7 @@ namespace ST10382638_PROG_POE.Controllers
                         .FirstOrDefaultAsync(lp => lp.LecturerProfileId == claim.LecturerProfileId);
 
                     ViewBag.Lecturer = lecturerVm2;
-                    ViewBag.Email = !string.IsNullOrWhiteSpace(lecturerEmail)
-                                        ? lecturerEmail
-                                        : lecturerVm2?.User?.Email ?? "";
+                    ViewBag.Email = !string.IsNullOrWhiteSpace(currentEmail);
 
                     return View(claim); // don't persist docs or redirect
                 }
@@ -268,7 +265,7 @@ namespace ST10382638_PROG_POE.Controllers
             // 5) Go back to Lecturer dashboard
             //    - Use lecturerEmail context to land on the correct profile view.
             // ------------------------------------------------------------
-            return RedirectToAction("Index", "Lecturer", new { email = lecturerEmail });
+            return RedirectToAction("Index", "Lecturer");
         }
 
         /// <summary>
@@ -278,8 +275,10 @@ namespace ST10382638_PROG_POE.Controllers
         /// <param name="email">Lecturer's email (required to locate profile).</param>
         /// <returns>The pending claims view with summary metrics.</returns>
         [HttpGet]
-        public async Task<IActionResult> Pending(string email)
+        public async Task<IActionResult> Pending()
         {
+            var email = User?.Identity?.Name;
+
             // Basic input validation: email is required to locate the correct profile.
             if (string.IsNullOrWhiteSpace(email))
                 return BadRequest("Lecturer email is required.");
@@ -357,7 +356,7 @@ namespace ST10382638_PROG_POE.Controllers
         /// <returns>Redirect to Coordinator dashboard.</returns>
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Verify(int id, string email)
+        public async Task<IActionResult> Verify(int id)
         {
             // Fetch and guard against missing claims.
             var claim = await _context.Claim.FindAsync(id);
@@ -368,7 +367,7 @@ namespace ST10382638_PROG_POE.Controllers
             claim.Status = "Verified";
             await _context.SaveChangesAsync();
 
-            return RedirectToAction("Index", "Coordinator", new { email });
+            return RedirectToAction("Index", "Coordinator");
         }
 
         /// <summary>
@@ -379,7 +378,7 @@ namespace ST10382638_PROG_POE.Controllers
         /// <returns>Redirect to Coordinator dashboard.</returns>
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Reject(int id, string email)
+        public async Task<IActionResult> Reject(int id)
         {
             var claim = await _context.Claim.FindAsync(id);
             if (claim == null)
@@ -389,7 +388,7 @@ namespace ST10382638_PROG_POE.Controllers
             claim.Status = "Rejected";
             await _context.SaveChangesAsync();
 
-            return RedirectToAction("Index", "Coordinator", new { email });
+            return RedirectToAction("Index", "Coordinator");
         }
 
         /// <summary>
@@ -400,14 +399,8 @@ namespace ST10382638_PROG_POE.Controllers
         /// <returns>Redirect to Manager dashboard.</returns>
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Approve(int id, string? email)
+        public async Task<IActionResult> Approve(int id)
         {
-            // Ensure redirect context is available (attempt to recover from form if null).
-            if (string.IsNullOrWhiteSpace(email))
-                email = Request.Form["email"].ToString();
-            if (string.IsNullOrWhiteSpace(email))
-                return BadRequest("Program manager email is required.");
-
             var claim = await _context.Claim.FindAsync(id);
             if (claim == null) return NotFound("Claim not found.");
 
@@ -418,7 +411,7 @@ namespace ST10382638_PROG_POE.Controllers
             claim.Status = "Approved";
             await _context.SaveChangesAsync();
 
-            return RedirectToAction("Index", "Manager", new { email });
+            return RedirectToAction("Index", "Manager");
         }
 
         /// <summary>
@@ -429,13 +422,8 @@ namespace ST10382638_PROG_POE.Controllers
         /// <returns>Redirect to Manager dashboard.</returns>
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ManagerReject(int id, string? email)
+        public async Task<IActionResult> ManagerReject(int id)
         {
-            // Ensure redirect context is available (attempt to recover from form if null).
-            if (string.IsNullOrWhiteSpace(email))
-                email = Request.Form["email"].ToString();
-            if (string.IsNullOrWhiteSpace(email))
-                return BadRequest("Program manager email is required.");
 
             var claim = await _context.Claim.FindAsync(id);
             if (claim == null) return NotFound("Claim not found.");
@@ -447,7 +435,7 @@ namespace ST10382638_PROG_POE.Controllers
             claim.Status = "Rejected";
             await _context.SaveChangesAsync();
 
-            return RedirectToAction("Index", "Manager", new { email });
+            return RedirectToAction("Index", "Manager");
         }
 
         /// <summary>

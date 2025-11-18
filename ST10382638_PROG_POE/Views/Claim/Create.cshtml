@@ -24,7 +24,7 @@
         <div class="card-body">
             @* Form posts to ClaimController.Create with multipart for file uploads.
                asp-route-lecturerEmail passes context for redirect after success. *@
-            <form asp-controller="Claim" asp-action="Create" asp-route-lecturerEmail="@lecturerEmail" method="post" enctype="multipart/form-data" class="hover-only-inputs">
+            <form asp-controller="Claim" asp-action="Create" method="post" enctype="multipart/form-data" class="hover-only-inputs">
                 @* Hidden FK for server to associate the claim to this lecturer profile. *@
                 <input type="hidden" name="lecturerProfileId" value="@lecturer.LecturerProfileId"/>
 
@@ -68,7 +68,7 @@
                 <div class="d-flex gap-12">
                     <button type="submit" class="btn btn-primary">Create Claim</button>
                     @* Cancel returns to Lecturer dashboard for the same email context. *@
-                    <a asp-controller="Lecturer" asp-action="Index"  asp-route-email="@lecturerEmail" class="btn btn-outline">Cancel</a>
+                    <a asp-controller="Lecturer" asp-action="Index" class="btn btn-outline">Cancel</a>
                 </div>
             </form>
         </div>

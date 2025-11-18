@@ -134,10 +134,8 @@
                         @* ---- Actions: Approve, Download, Reject ---- *@
                         <div class="mt-auto d-flex align-items-center justify-content-between gap-2">
                             @* Approve (Manager) -> ClaimController.Approve (POST) *@
-                            <form asp-controller="Claim" asp-action="Approve" asp-route-email="@email" method="post" class="m-0">
+                            <form asp-controller="Claim" asp-action="Approve" method="post" class="m-0">
                                 <input type="hidden" name="id" value="@c.ClaimId" />
-                                @* Hidden email field included as-is per original markup *@
-                                <input type="hidden" name="=email" value="@email" />
                                 <button type="submit" class="btn btn-neon btn-neon-approve">Approve</button>
                             </form>
 
@@ -153,10 +151,9 @@
                             }
 
                             @* Reject (Manager) -> ClaimController.ManagerReject (POST) *@
-                            <form asp-controller="Claim" asp-action="ManagerReject" asp-route-email="@email" method="post" class="m-0">
+                            <form asp-controller="Claim" asp-action="ManagerReject" method="post" class="m-0">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="id" value="@c.ClaimId" />
-                                <input type="hidden" name="email" value="@email" />
                                 <button type="submit" class="btn btn-neon btn-neon-reject">Reject</button>
                             </form>
                         </div>

@@ -8,6 +8,7 @@
 //   2) C# Reference & Tutorials:   https://www.w3schools.com/cs/index.php
 // =====================================================================================
 
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ST10382638_PROG_POE.Data;
@@ -20,6 +21,8 @@ namespace ST10382638_PROG_POE.Controllers
     /// for approval/rejection. Eager-loads lecturer identity and supporting documents to
     /// avoid N+1 queries and provide full context to the view.
     /// </summary>
+
+    [Authorize(Roles = "Manager")]
     public class ManagerController : Controller
     {
         // ---------- Dependencies ----------
@@ -40,8 +43,10 @@ namespace ST10382638_PROG_POE.Controllers
         /// </summary>
         /// <param name="email">Program Manager email used to identify the current user.</param>
         /// <returns>The dashboard view populated via <see cref="ViewBag"/> fields.</returns>
-        public async Task<IActionResult> Index(string email)
+        public async Task<IActionResult> Index()
         {
+            var email = User?.Identity?.Name;
+
             // Validate input early; manager identity is required for personalized context.
             if (string.IsNullOrWhiteSpace(email))
                 return BadRequest("Program manager email is required");

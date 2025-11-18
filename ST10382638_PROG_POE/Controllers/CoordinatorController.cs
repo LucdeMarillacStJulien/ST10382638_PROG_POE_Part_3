@@ -42,11 +42,9 @@ namespace ST10382638_PROG_POE.Controllers
         /// </summary>
         /// <param name="email">Coordinator email used to identify the current user.</param>
         /// <returns>The dashboard view with pending claims and coordinator details in <see cref="ViewBag"/>.</returns>
-        public async Task<IActionResult> Index(string email)
+        public async Task<IActionResult> Index()
         {
-            // Validate input early; coordinator identity is required for context.
-            if (string.IsNullOrWhiteSpace(email))
-                return BadRequest("Coordinator email is required");
+            var email = User?.Identity?.Name;
 
             // Load the coordinator user record to provide name/email in the UI.
             var me = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);

@@ -28,7 +28,17 @@
 
                 <div class="collapse navbar-collapse" id="mainNav">
                     <ul class="navbar-nav">
-                        
+                        @if(User.Identity.IsAuthenticated)
+                        {
+                            <li class="nav-item align-content-lg-end">
+                                <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="nav-link btn btn-link logout-link p-0">
+                                        Logout
+                                    </button>
+                                </form>
+                            </li>
+                        }
                     </ul>
                 </div>
             </div>
