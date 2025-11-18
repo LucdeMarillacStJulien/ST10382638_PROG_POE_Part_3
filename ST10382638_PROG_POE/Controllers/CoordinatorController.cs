@@ -8,6 +8,7 @@
 //   2) C# Reference & Tutorials:   https://www.w3schools.com/cs/index.php
 // =====================================================================================
 
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ST10382638_PROG_POE.Data;
@@ -19,6 +20,8 @@ namespace ST10382638_PROG_POE.Controllers
     /// Coordinator-facing controller that renders a view of all <c>Pending</c> claims.
     /// Loads related Lecturer and SupportingDocs info for display and review.
     /// </summary>
+
+    [Authorize(Roles = "Coordinator")]
     public class CoordinatorController : Controller
     {
         // ---------- Dependencies ----------

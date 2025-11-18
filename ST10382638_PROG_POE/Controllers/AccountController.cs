@@ -51,17 +51,17 @@ namespace ST10382638_PROG_POE.Controllers
                 if (roles.Contains("Lecturer"))
                 {
                     // Lecturer dashboard requires email parameter.
-                    return RedirectToAction("Index", "Lecturer", new { email });
+                    return RedirectToAction("Index", "Lecturer");
                 }
 
                 if (roles.Contains("Coordinator"))
                 {
-                    return RedirectToAction("Index", "Coordinator", new { email });
+                    return RedirectToAction("Index", "Coordinator");
                 }
 
                 if (roles.Contains("Manager"))
                 {
-                    return RedirectToAction("Index", "Manager", new { email });
+                    return RedirectToAction("Index", "Manager");
                 }
 
                 if (roles.Contains("HR"))

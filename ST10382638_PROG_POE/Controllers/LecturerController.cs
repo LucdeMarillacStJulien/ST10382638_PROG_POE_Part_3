@@ -8,6 +8,7 @@
 //   2) C# Reference & Tutorials:   https://www.w3schools.com/cs/index.php
 // =====================================================================================
 
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ST10382638_PROG_POE.Data;
@@ -20,6 +21,8 @@ namespace ST10382638_PROG_POE.Controllers
     /// prepares dashboard metrics: pending counts, this-month approvals/hours,
     /// a shortlist of oldest pending items, and a 3-month hours series for charts.
     /// </summary>
+
+    [Authorize(Roles = "Lecturer")]
     public class LecturerController : Controller
     {
         // ---------- Dependencies ----------
@@ -41,10 +44,10 @@ namespace ST10382638_PROG_POE.Controllers
         /// </summary>
         /// <param name="email">Lecturer's email used to locate the profile.</param>
         /// <returns>The dashboard view for the lecturer, or 404 if profile not found.</returns>
-        public async Task<IActionResult> Index(string email)
+        public async Task<IActionResult> Index()
         {
             // Preserve incoming email for clarity; could be used for breadcrumbs or links.
-            var currentEmail = email;
+            var currentEmail = User?.Identity?.Name;
 
             // Eager-load User and Claim collections to avoid N+1 queries in the view.
             var profile = await _context.LecturerProfile
