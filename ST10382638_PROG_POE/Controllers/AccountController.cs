@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
 using ST10382638_PROG_POE.Models;
 
 namespace ST10382638_PROG_POE.Controllers
@@ -27,13 +28,13 @@ namespace ST10382638_PROG_POE.Controllers
         [HttpPost]
         public async Task<IActionResult> Login(Login login)
         {
-            if(!ModelState.IsValid)
+            if (!ModelState.IsValid)
             {
                 return View(login);
             }
 
             var user = await _userManager.FindByEmailAsync(login.Email);
-            if(user == null)
+            if (user == null)
             {
                 ModelState.AddModelError(string.Empty, "Invalid login attempt.");
                 return View(login);
@@ -83,6 +84,22 @@ namespace ST10382638_PROG_POE.Controllers
             // Generic failure message.
             ModelState.AddModelError(string.Empty, "Invalid login attempt.");
             return View(login);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize]
+        public async Task<IActionResult> Logout()
+        {
+            await _signInManager.SignOutAsync();
+            _logger.LogInformation("User logged out.");
+            return RedirectToAction("Index", "Home");
+        }
+
+        [HttpGet]
+        public IActionResult AccessDenied()
+        {
+            return View();
         }
     }
 }
