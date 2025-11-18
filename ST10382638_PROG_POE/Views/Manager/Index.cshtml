@@ -1,0 +1,168 @@
+﻿@* =====================================================================================
+   Name: Luc de Marillac St Julien
+   Student Number: ST10382638
+   Group: 1
+
+   References:
+     1) Project outline/instructions: https://chatgpt.com/c/68f2c6ad-b79c-832c-97a1-59b6f53334a9
+     2) C# Reference & Tutorials:   https://www.w3schools.com/cs/index.php
+   ===================================================================================== *@
+
+@using ST10382638_PROG_POE.Models
+@using System.Globalization
+
+@{
+    ViewData["Title"] = "Manager Dashboard";
+
+    // View data provided by ManagerController.Index
+    var verified = ViewBag.VerifiedClaims as List<Claim> ?? new();
+    var verifiedCount = (int)(ViewBag.VerifiedCount ?? 0);
+    var managerName = ViewBag.ProgramManagerName as string ?? "Manager";
+    var email = ViewBag.ProgramManagerEmail as string ?? "";
+
+    // Culture for ZAR currency formatting
+    var za = CultureInfo.CreateSpecificCulture("en-ZA");
+}
+
+<section class="container py-4">
+    @* ---------- Header / Welcome + verified count badge ---------- *@
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+        <div class="d-flex align-items-center gap-3">
+            <h2 class="m-0">Welcome back, @managerName</h2>
+            <span class="badge bg-info text-dark">@verifiedCount</span>
+        </div>
+    </div>
+
+    @* ---------- Verified Claims Grid ---------- *@
+    <div class="row g-3">
+        @if (!verified.Any())
+        {
+            @* Empty state when there are no verified items to process *@
+            <div class="col-12">
+                <div class="card p-3">
+                    <p class="m-0">No pending claims right now.</p>
+                </div>
+            </div>
+        }
+        else
+        {
+            @* Render each verified claim with details and action buttons *@
+            @foreach (var c in verified)
+            {
+                // Prefer stored CalculatedAmount; fallback computes Hours × Rate
+                var amount = (c.CalculatedAmount != 0)
+                ? Convert.ToDouble(c.CalculatedAmount)
+                : (c.HoursWorked * c.RateAtSubmission);
+
+                // Lecturer display name with graceful fallback
+                var lecturerName = c.LecturerProfile?.User != null
+                ? $"{c.LecturerProfile.User.FirstName} {c.LecturerProfile.User.Surname}"
+                : "Unknown Lecturer";
+
+                // Friendly claim number
+                var claimNo = $"CMC-{c.SubmittedOn:yyyy}-{c.ClaimId:D3}";
+
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="card h-100 p-3">
+                        @* ---- Card header: lecturer + status badge ---- *@
+                        <div class="d-flex align-items-start justify-content-between gap-2 mb-1">
+                            <h5 class="card-title m-0">@lecturerName</h5>
+                            <span class="badge bg-info text-dark">@c.Status</span>
+                        </div>
+
+                        @* Claim identifier *@
+                        <div class="small text-muted">Claim ID</div>
+                        <div class="fw-semibold mb-2">@claimNo</div>
+
+                        @* Submission date *@
+                        <div>
+                            <div class="text-muted">Submitted</div>
+                            <div>@c.SubmittedOn.ToString("dd MMM yyyy")</div>
+                        </div>
+
+                        @* Rate snapshot captured at submission *@
+                        <div class="mt-2">
+                            <div class="text-muted">Rate at Submission</div>
+                            <div class="fw-semibold">@c.RateAtSubmission.ToString("C", za)</div>
+                        </div>
+
+                        @* Quick stats: hours and amount *@
+                        <div class="row g-2 my-3">
+                            <div class="col-6">
+                                <div class="text-muted small">Hours Worked</div>
+                                <div class="fw-semibold">@c.HoursWorked.ToString("0.##", za)</div>
+                            </div>
+                            <div class="col-6 text-end">
+                                <div class="text-muted small">Amount</div>
+                                <div class="fw-semibold">@amount.ToString("C", za)</div>
+                            </div>
+                        </div>
+
+                        <div class="mt-2">
+                            <div class="text-muted">Notes</div>
+                            @if (!string.IsNullOrWhiteSpace(c.Notes))
+                            {
+                                <div class="mt-2">
+
+                                    <div class="fw-semibold">@c.Notes</div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="text-muted">No Notes</div>
+                            }
+                        </div>
+
+                        @* Document list (if any) *@
+                        <div class="mt-2">
+                            <div class="text-muted">Documents</div>
+                            @if (c.SupportingDocs != null && c.SupportingDocs.Any())
+                            {
+                                <ul class="mb-2">
+                                    @foreach (var d in c.SupportingDocs)
+                                    {
+                                        <li>@d.FileName</li>
+                                    }
+                                </ul>
+                            }
+                            else
+                            {
+                                <div class="text-muted">No files uploaded</div>
+                            }
+                        </div>
+
+                        @* ---- Actions: Approve, Download, Reject ---- *@
+                        <div class="mt-auto d-flex align-items-center justify-content-between gap-2">
+                            @* Approve (Manager) -> ClaimController.Approve (POST) *@
+                            <form asp-controller="Claim" asp-action="Approve" asp-route-email="@email" method="post" class="m-0">
+                                <input type="hidden" name="id" value="@c.ClaimId" />
+                                @* Hidden email field included as-is per original markup *@
+                                <input type="hidden" name="=email" value="@email" />
+                                <button type="submit" class="btn btn-neon btn-neon-approve">Approve</button>
+                            </form>
+
+                            @* Download supporting files if available *@
+                            @if (c.SupportingDocs != null && c.SupportingDocs.Any())
+                            {
+                                <a asp-controller="Claim"
+                                   asp-action="DownloadClaimFolder"
+                                   asp-route-claimId="@c.ClaimId"
+                                   class="btn btn-neon btn-neon-details">
+                                    Download Files
+                                </a>
+                            }
+
+                            @* Reject (Manager) -> ClaimController.ManagerReject (POST) *@
+                            <form asp-controller="Claim" asp-action="ManagerReject" asp-route-email="@email" method="post" class="m-0">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@c.ClaimId" />
+                                <input type="hidden" name="email" value="@email" />
+                                <button type="submit" class="btn btn-neon btn-neon-reject">Reject</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</section>

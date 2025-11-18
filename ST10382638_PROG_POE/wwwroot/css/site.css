@@ -1,0 +1,197 @@
+/* ============================
+   site.css — layout & chrome
+   Theme: Business Futuristic Glass Dark Neon
+   ============================ */
+
+/* ---------- CSS Variables ---------- */
+:root {
+    --bg: #0b0f14;
+    --bg-2: #0e141b;
+    --grid: #0f1722;
+    --text: #e6f1ff;
+    --muted: #9fb2c9;
+    --accent: #00ffe0; /* neon cyan */
+    --accent-2: #6a00ff; /* neon purple */
+    --danger: #ff3366;
+    --success: #00d08a;
+    --glass-bg: rgba(14,20,27,.55);
+    --glass-border: rgba(255,255,255,.08);
+    --shadow: 0 10px 30px rgba(0,0,0,.45);
+    --header-h: 64px;
+    --footer-h: 52px;
+}
+
+/* ---------- Resets & Layout ---------- */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+html, body {
+    height: 100%;
+}
+
+html {
+    background: var(--bg);
+}
+
+/* body is transparent so our fixed background layer is visible */
+body {
+    margin: 0;
+    color: var(--text);
+    background: transparent;
+    font: 14px/1.5 Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+    min-height: 100svh;
+    position: relative; /* for pseudo layers */
+}
+
+main {
+    flex: 1 0 auto;
+}
+
+/* ---------- FIXED BACKGROUND (neon circles + grid, doesn't scroll) ---------- */
+/* We build crisp neon rings by using thin high-contrast bands with a faint outer glow. */
+/* Two tiled ring layers (cyan + purple) are offset to avoid perfect overlap. */
+/* Grid sits on top for the tech look. */
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-color: var(--bg);
+}
+
+@media (prefers-reduced-motion:no-preference) {
+    /* tiny drift for a living feel (moves ring tiles subtly; grid stays aligned) */
+    body::before {
+        animation: rings-drift 26s linear infinite alternate;
+    }
+
+    @keyframes rings-drift {
+        0% {
+            background-position: 0 0, 140px 140px, 0 0, 0 0;
+        }
+
+        100% {
+            background-position: 18px 12px, 158px 154px, 0 0, 0 0;
+        }
+    }
+}
+
+/* ---------- Navbar ---------- */
+.navbar {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    height: var(--header-h);
+    backdrop-filter: saturate(140%) blur(10px);
+    -webkit-backdrop-filter: saturate(140%) blur(10px);
+    background: linear-gradient(180deg, rgba(12,16,22,.9), rgba(12,16,22,.6));
+    border-bottom: 1px solid var(--glass-border);
+    box-shadow: 0 8px 24px rgba(0,0,0,.35);
+    padding-block: 0;
+}
+
+    .navbar .container, .navbar .container-fluid {
+        padding-left: 16px;
+        padding-right: 16px;
+        justify-content: flex-start !important;
+    }
+
+    .navbar .ms-auto {
+        margin-left: 0 !important;
+    }
+
+.navbar-brand {
+    color: var(--text);
+    font-weight: 700;
+    letter-spacing: .2px;
+    text-transform: uppercase;
+}
+
+.navbar-nav .nav-link {
+    color: var(--muted);
+    position: relative;
+    padding: .5rem .75rem;
+    transition: color .2s, transform .2s;
+}
+
+    .navbar-nav .nav-link::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        bottom: -6px;
+        width: 0;
+        height: 2px;
+        background: linear-gradient(90deg, var(--accent), var(--accent-2));
+        border-radius: 2px;
+        transition: width .25s;
+    }
+
+    .navbar-nav .nav-link:hover,
+    .navbar-nav .nav-link:focus {
+        color: var(--text);
+        transform: translateY(-1px);
+    }
+
+        .navbar-nav .nav-link:hover::after,
+        .navbar-nav .nav-link:focus::after,
+        .navbar-nav .nav-link.active::after,
+        .navbar-nav .show > .nav-link::after {
+            width: 100%;
+        }
+
+    .navbar-nav .nav-link.active, .navbar-nav .show > .nav-link {
+        color: var(--accent);
+    }
+
+.navbar-toggler {
+    border-color: var(--glass-border);
+}
+
+    .navbar-toggler:focus {
+        box-shadow: 0 0 0 .1rem var(--accent);
+    }
+
+.navbar .navbar-toggler-icon {
+    filter: invert(1) opacity(.85);
+}
+
+/* ---------- Footer ---------- */
+footer.site-footer {
+    height: var(--footer-h);
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 16px;
+    padding: 0 16px;
+    backdrop-filter: saturate(140%) blur(10px);
+    -webkit-backdrop-filter: saturate(140%) blur(10px);
+    background: linear-gradient(0deg, rgba(12,16,22,.9), rgba(12,16,22,.6));
+    border-top: 1px solid var(--glass-border);
+    box-shadow: 0 -8px 24px rgba(0,0,0,.35);
+    flex-shrink: 0;
+}
+
+    footer.site-footer a {
+        color: var(--muted);
+        text-decoration: none;
+        position: relative;
+    }
+
+        footer.site-footer a:hover, footer.site-footer a:focus {
+            color: var(--accent);
+        }
+
+/* ---------- Utilities & A11y ---------- */
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.text-muted {
+    color: var(--muted) !important;
+}

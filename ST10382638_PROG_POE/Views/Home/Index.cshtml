@@ -1,0 +1,61 @@
+﻿@* =====================================================================================
+   Name: Luc de Marillac St Julien
+   Student Number: ST10382638
+   Group: 1
+
+   References:
+     1) Project outline/instructions: https://chatgpt.com/c/68f2c6ad-b79c-832c-97a1-59b6f53334a9
+     2) C# Reference & Tutorials:   https://www.w3schools.com/cs/index.php
+   ===================================================================================== *@
+
+@{
+    ViewData["Title"] = "Sign In";
+}
+
+<div class="p-16">
+    <h1>Choose a Profile to Sign In</h1>
+
+    <div class="mt-16 gap-12">
+        @* ---------------------- Lecturer ---------------------- *@
+        <div class="card mb-16">
+            <div class="card-header">
+                Lecturer
+            </div>
+            <div class="p-16">
+                <p>Sign in as the Lecturer to manage lecturer-specific tasks.</p>
+            </div>
+            <div class="card-footer">
+                @* Navigates to LecturerController.Index with a sample email route value *@
+                <a class="btn btn-primary" asp-controller="Lecturer" asp-action="Index" asp-route-email="john.lecturer@example.com">Login</a>
+            </div>
+        </div>
+
+        @* ------------------ Program Coordinator ------------------ *@
+        <div class="card mb-16">
+            <div class="card-header">
+                Program Coordinator
+            </div>
+            <div class="p-16">
+                <p>Sign in as the Program Coordinator to review and coordinate activities.</p>
+            </div>
+            <div class="card-footer">
+                @* Navigates to CoordinatorController.Index with a sample email route value *@
+                <a class="btn btn-primary" asp-controller="Coordinator" asp-action="Index" asp-route-email="mark.coordinator@example.com">Login</a>
+            </div>
+        </div>
+
+        @* -------------------- Program Manager -------------------- *@
+        <div class="card">
+            <div class="card-header">
+                Program Manager
+            </div>
+            <div class="p-16">
+                <p>Sign in as the Program Manager to oversee program operations.</p>
+            </div>
+            <div class="card-footer">
+                @* Navigates to ManagerController.Index with a sample email route value *@
+                <a class="btn btn-primary" asp-controller="Manager" asp-action="Index" asp-route-email="pieter.manager@example.com">Login</a>
+            </div>
+        </div>
+    </div>
+</div>

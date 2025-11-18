@@ -1,0 +1,517 @@
+﻿/* ============================
+   ui.css — components & UI skin
+   Works alongside site.css
+   ============================ */
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--text);
+    letter-spacing: .2px;
+    margin-top: 0;
+}
+
+p, li, label, input, button, select, textarea, table {
+    color: var(--text);
+}
+
+/* Glass cards / panels */
+.card,
+.panel,
+.glass {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--shadow);
+    border-radius: 14px;
+    backdrop-filter: blur(14px) saturate(130%);
+    -webkit-backdrop-filter: blur(14px) saturate(130%);
+}
+
+.card {
+    padding: 16px;
+}
+
+.card-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--glass-border);
+    font-weight: 600;
+    color: var(--text);
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0));
+    border-top-left-radius: 14px;
+    border-top-right-radius: 14px;
+}
+
+.card-graph .card-body{
+    min-height: 350px;
+}
+
+.card-footer {
+    padding: 12px 16px;
+    border-top: 1px solid var(--glass-border);
+    border-bottom-left-radius: 14px;
+    border-bottom-right-radius: 14px;
+}
+
+/* Buttons (Bootstrap-friendly overrides) */
+.btn, .button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+    background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+    color: var(--text);
+    text-decoration: none;
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+    box-shadow: 0 6px 14px rgba(0,0,0,0.35);
+}
+
+    .btn:hover, .button:hover,
+    .btn:focus, .button:focus {
+        transform: translateY(-1px);
+        border-color: rgba(255,255,255,0.18);
+        box-shadow: 0 10px 22px rgba(0,0,0,0.45), 0 0 12px rgba(0,255,224,0.35);
+    }
+
+    .btn:active, .button:active {
+        transform: translateY(0);
+    }
+
+/* Button variants */
+.btn-primary {
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    color: #081016;
+    border: none;
+}
+
+    .btn-primary:hover, .btn-primary:focus {
+        box-shadow: 0 10px 22px rgba(0,0,0,0.45), 0 0 18px rgba(0,255,224,0.45);
+    }
+
+.btn-outline {
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+}
+
+    .btn-outline:hover {
+        background: rgba(0,255,224,0.1);
+    }
+
+/* Form controls */
+input[type="text"], input[type="email"], input[type="password"],
+input[type="number"], input[type="search"],
+select, textarea, .form-control {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+    background: rgba(8, 12, 18, 0.6);
+    color: var(--text);
+    outline: none;
+    transition: border-color .15s ease, box-shadow .15s ease, background .2s ease;
+    box-shadow: inset 0 0 0 9999px rgba(255,255,255,0.0); /* no iOS yellow bg */
+}
+
+    input::placeholder, textarea::placeholder {
+        color: var(--muted);
+    }
+
+    input:focus, select:focus, textarea:focus, .form-control:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(0,255,224,0.18);
+        background: rgba(8, 12, 18, 0.75);
+    }
+
+/* Checkboxes / radios (simple glow on focus) */
+input[type="checkbox"], input[type="radio"] {
+    accent-color: var(--accent);
+}
+
+/* Tables */
+.table, table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+    .table thead th, table thead th {
+        background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0));
+        color: var(--text);
+        text-align: left;
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--glass-border);
+    }
+
+    .table tbody td, table tbody td {
+        padding: 12px 14px;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+        color: var(--text);
+    }
+
+    .table tbody tr:last-child td {
+        border-bottom: 0;
+    }
+
+    .table tbody tr:hover {
+        background: rgba(0,255,224,0.05);
+    }
+
+/* Badges / pills */
+.badge, .pill {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--glass-border);
+    background: rgba(255,255,255,0.06);
+    color: var(--text);
+    font-weight: 600;
+}
+
+.badge-accent {
+    background: rgba(0,255,224,0.16);
+    color: var(--text);
+}
+
+.badge-danger {
+    background: rgba(255,51,102,0.18);
+}
+
+/* Links inside content */
+a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+    a:hover, a:focus {
+        text-decoration: underline;
+    }
+
+/* Code blocks */
+pre, code, kbd {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    padding: 2px 6px;
+}
+
+/* Spacing utilities */
+.gap-8 {
+    gap: 8px;
+}
+
+.gap-12 {
+    gap: 12px;
+}
+
+.mt-16 {
+    margin-top: 16px;
+}
+
+.mb-16 {
+    margin-bottom: 16px;
+}
+
+.p-16 {
+    padding: 16px;
+}
+
+/* Neon separators */
+.hr-neon {
+    height: 1px;
+    border: 0;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0.6;
+}
+
+/* Subtle “live” pulse you can add to active items */
+.live-dot {
+    position: relative;
+    padding-left: 18px;
+}
+
+    .live-dot::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 10px var(--accent);
+    }
+
+@media (prefers-reduced-motion: no-preference) {
+    .live-dot::before {
+        animation: pulse 1.8s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% {
+            opacity: 0.9;
+            transform: translateY(-50%) scale(1);
+        }
+
+        50% {
+            opacity: 0.5;
+            transform: translateY(-50%) scale(0.85);
+        }
+    }
+}
+
+/* Make readonly / disabled inputs match the dark glass theme */
+input[readonly],
+input:disabled,
+textarea[readonly],
+textarea:disabled {
+    background: rgba(8, 12, 18, 0.6); /* same dark background as normal inputs */
+    color: var(--text); /* your neon text color */
+    border: 1px solid var(--glass-border);
+    cursor: not-allowed;
+}
+
+/* Neon theme button overrides */
+.btn-outline {
+    color: var(--accent);
+    border-color: var(--accent);
+    background-color: transparent;
+    transition: background-color 0.12s ease-out, color 0.12s ease-out, border-color 0.12s ease-out, box-shadow 0.12s ease-out; /* faster + smoother */
+}
+
+    .btn-outline:hover,
+    .btn-outline:focus {
+        background: var(--accent);
+        color: #0b0f14;
+        border-color: var(--accent);
+        box-shadow: 0 0 8px var(--accent);
+    }
+
+/* === Neon Button Base === */
+.btn-neon {
+    background: transparent;
+    color: var(--text);
+    border: 2px solid currentColor;
+    transition: background-color 0.12s ease-out, color 0.12s ease-out, box-shadow 0.12s ease-out;
+    box-shadow: 0 0 6px currentColor;
+}
+
+/* Green Approve */
+.btn-neon-approve {
+    color: var(--success);
+}
+
+    .btn-neon-approve:hover,
+    .btn-neon-approve:focus {
+        background-color: var(--success);
+        color: #0b0f14; /* dark bg for contrast */
+        box-shadow: 0 0 14px var(--success);
+    }
+
+/* Blue Details */
+.btn-neon-details {
+    color: #009dff; /* bright blue */
+}
+
+    .btn-neon-details:hover,
+    .btn-neon-details:focus {
+        background-color: #009dff;
+        color: #0b0f14;
+        box-shadow: 0 0 14px #009dff;
+    }
+
+/* Red Reject */
+.btn-neon-reject {
+    color: var(--danger);
+}
+
+    .btn-neon-reject:hover,
+    .btn-neon-reject:focus {
+        background-color: var(--danger);
+        color: #0b0f14;
+        box-shadow: 0 0 14px var(--danger);
+    }
+
+/* Glassy textarea + pleasant focus */
+textarea.form-control {
+    background: var(--glass-bg);
+    color: var(--text);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--shadow);
+    resize: vertical; /* let them grow it if needed */
+}
+
+    textarea.form-control::placeholder {
+        color: var(--muted);
+        opacity: 0.85;
+    }
+
+    textarea.form-control:focus {
+        border-color: var(--accent);
+        outline: 0;
+        box-shadow: 0 0 0 .2rem rgba(0,255,224,0.22);
+    }
+
+/* Counter text */
+.form-text {
+    color: var(--muted);
+}
+
+/* Neon note text for empty states */
+.neon-note {
+    color: var(--accent);
+    text-shadow: 0 0 8px var(--accent);
+    letter-spacing: .2px;
+    font-weight: 600;
+}
+
+.input-clean {
+    color: #ffffff; /* crisp white text */
+    font-weight: 500;
+    border: 1px solid rgba(255,255,255,0.2); /* subtle border */
+    background: rgba(20, 24, 31, 0.8); /* dark glass-like bg */
+    border-radius: 8px;
+    padding: 10px 12px;
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+    /* On focus: cleaner accent border, no glow */
+    .input-clean:focus {
+        outline: none;
+        border-color: var(--accent); /* use your neon cyan as focus color */
+        background: rgba(20, 24, 31, 0.95);
+    }
+
+/* File input - dark theme with no ring unless hover */
+input[type="file"] {
+    color: var(--text) !important;
+    background: rgba(20, 24, 31, 0.85);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    padding: 6px;
+    outline: none; /* kill browser blue outline */
+    box-shadow: none; /* kill browser glow */
+}
+
+    /* No custom focus glow */
+    input[type="file"]:focus {
+        outline: none;
+        box-shadow: none;
+        border-color: var(--glass-border);
+    }
+
+    /* On hover: subtle neon accent */
+    input[type="file"]:hover {
+        border-color: var(--accent);
+        box-shadow: 0 0 6px rgba(0,255,224,0.25);
+    }
+
+    /* File chooser button */
+    input[type="file"]::file-selector-button {
+        background: linear-gradient(90deg, var(--accent), var(--accent-2));
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        padding: 6px 12px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: box-shadow .2s ease, transform .15s ease;
+    }
+
+        /* Glow only on hover */
+        input[type="file"]::file-selector-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 0 10px var(--accent);
+        }
+
+    /* Fix "No file chosen" text */
+    input[type="file"]::-webkit-file-upload-text {
+        color: var(--text) !important;
+        font-weight: 500;
+    }
+
+/* Scope: only inputs inside forms marked .hover-only-inputs */
+/* Base: flat, no ring */
+.hover-only-inputs input,
+.hover-only-inputs select,
+.hover-only-inputs textarea,
+.hover-only-inputs .form-control {
+    outline: none;
+    box-shadow: none;
+    border: 1px solid var(--glass-border);
+    background: rgba(8, 12, 18, 0.6);
+    transition: border-color .15s ease, box-shadow .15s ease, background .2s ease;
+}
+
+    /* Kill focus glow entirely */
+    .hover-only-inputs input:focus,
+    .hover-only-inputs select:focus,
+    .hover-only-inputs textarea:focus,
+    .hover-only-inputs .form-control:focus {
+        outline: none;
+        box-shadow: none;
+        border-color: var(--glass-border);
+        background: rgba(8, 12, 18, 0.75);
+    }
+
+    /* Hover-only neon */
+    .hover-only-inputs input:hover,
+    .hover-only-inputs select:hover,
+    .hover-only-inputs textarea:hover,
+    .hover-only-inputs .form-control:hover {
+        border-color: var(--accent);
+        box-shadow: 0 0 6px rgba(0,255,224,0.25);
+    }
+
+    /* --- File input specifics (still scoped to this form) --- */
+    .hover-only-inputs input[type="file"] {
+        color: var(--text) !important;
+        background: rgba(20, 24, 31, 0.85);
+        border-radius: 8px;
+        padding: 6px;
+    }
+
+        /* Button on the left of the file input */
+        .hover-only-inputs input[type="file"]::file-selector-button {
+            background: linear-gradient(90deg, var(--accent), var(--accent-2));
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: box-shadow .2s ease, transform .15s ease;
+        }
+
+        /* Glow only on hover (not focus) */
+        .hover-only-inputs input[type="file"]:hover {
+            border-color: var(--accent);
+            box-shadow: 0 0 6px rgba(0,255,224,0.25);
+        }
+
+        .hover-only-inputs input[type="file"]::file-selector-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 0 10px var(--accent);
+        }
+
+        /* Make the "No file chosen" text readable (Chromium) */
+        .hover-only-inputs input[type="file"]::-webkit-file-upload-text {
+            color: var(--text) !important;
+            font-weight: 500;
+        }
+
+/* Firefox alignment (optional, safe to keep) */
+@-moz-document url-prefix() {
+    .hover-only-inputs input[type="file"] {
+        padding-block: 4px;
+    }
+}
+
+
+

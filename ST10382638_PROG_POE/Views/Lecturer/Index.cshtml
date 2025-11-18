@@ -1,0 +1,142 @@
+﻿@* =====================================================================================
+   Name: Luc de Marillac St Julien
+   Student Number: ST10382638
+   Group: 1
+
+   References:
+     1) Project outline/instructions: https://chatgpt.com/c/68f2c6ad-b79c-832c-97a1-59b6f53334a9
+     2) C# Reference & Tutorials:   https://www.w3schools.com/cs/index.php
+   ===================================================================================== *@
+
+@model ST10382638_PROG_POE.Models.LecturerProfile
+
+@{
+    ViewData["Title"] = "Lecturer Dashboard";
+}
+
+<section class="container py-4">
+    @* ---------- Page Title ---------- *@
+    <div class="d-flex align-items-center gap-12 mb-3">
+        <h1 class="m-0">Lecturer Dashboard</h1>
+    </div>
+
+    @* ---------- Welcome & Primary Action ---------- *@
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-12 mb-3">
+        <div class="d-flex align-items-center gap-12">
+            <h1 class="m-0">Welcome back, @Model.User.FirstName @Model.User.Surname</h1>
+            <span class="badge badge-accent">Lecturer</span>
+        </div>
+
+        @* Create Claim routes to ClaimController.Create with LecturerProfileId *@
+        <a class="btn btn-primary" asp-area="" asp-controller="Claim" asp-action="Create" asp-route-id="@Model.LecturerProfileId">
+            <span>Create Claim</span>
+        </a>
+    </div>
+
+    @* ---------- KPI Cards (values provided by controller via ViewBag) ---------- *@
+    <div class="row g-3">
+        <div class="col-12 col-md-6 col-lg-4">
+            <div class="card">
+                <div class="card-header">Pending Claims</div>
+                <div class="card-body d-flex align-items-baseline justify-content-between">
+                    <div>
+                        <div class="display-5 fw-bold">@ViewBag.PendingCount</div>
+                        <div class="text-muted">Awaiting approval</div>
+                    </div>
+                    <span class="pill">Total</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6 col-lg-4">
+            <div class="card">
+                <div class="card-header">Approved Claims (This Month)</div>
+                <div class="card-body d-flex align-items-baseline justify-content-between">
+                    <div>
+                        <div class="display-5 fw-bold">@ViewBag.ApprovedThisMonth</div>
+                        <div class="text-muted">Processed successfully</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* Optional KPI: displays total approved hours this month *@
+        <div class="col-12 col-md-6 col-lg-4">
+            <div class="card">
+                <div class="card-header">Hours Logged (This Month)</div>
+                <div class="card-body d-flex align-items-baseline justify-content-between">
+                    <div>
+                        <div class="display-5 fw-bold">@ViewBag.HoursThisMonth</div>
+                        <div class="text-muted">Teaching / admin</div>
+                    </div>
+                    <span class="pill">Hours</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* ---------- Oldest Pending (compact list) ---------- *@
+    <div class="row mt-3">
+        <div class="col-md-4">
+            <div class="card p-16">
+                <div class="card-header">Pending Claims</div>
+                <div class="card-body">
+                    @{
+                        // Provided by controller: top 3 oldest pending claims
+                        var oldest = ViewBag.OldestPending3 as List<Claim> ?? new();
+                    }
+
+                    <ul class="list-unstyled mb-3">
+                        @foreach (var c in oldest)
+                        {
+                            <li class="mb-2">
+                                <strong>CMC-@c.SubmittedOn.ToString("yyyy")-@c.ClaimId.ToString("D3")</strong>
+                                <span class="badge badge-danger">@c.Status</span>
+                            </li>
+                        }
+                    </ul>
+
+                    @* Deep link to the full tracking table for this lecturer *@
+                    <a asp-controller="Claim" asp-action="Pending" asp-route-email="@Model.User.Email" class="btn btn-outline w-100">
+                        Claim tracking
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* ---------- Chart Inputs (labels/hours) ---------- *@
+    @{
+        // ViewBag.ChartLabels: IEnumerable<string> like ["Aug","Sep","Oct"]
+        // ViewBag.ChartHours: IEnumerable<double> parallel totals per month
+        var labels = (IEnumerable<string>)(ViewBag.ChartLabels ?? new List<string>());
+        var hours = (IEnumerable<double>)(ViewBag.ChartHours ?? new List<double>());
+        var hasHours = hours.Any(h => h > 0);
+    }
+
+    @* ---------- Chart: Last 3 Months (renders via dashboard.js) ---------- *@
+    <div class="card mt-3 card-graph">
+        <div class="card-header">Hours Logged — Last 3 Months</div>
+        <div class="card-body">
+            @if (hasHours)
+            {
+                @* Canvas carries data-* attributes that dashboard.js reads to plot with Chart.js *@
+                <canvas id="hoursChart"
+                        height="120"
+                        data-labels="@string.Join("|", labels)"
+                        data-hours="@string.Join("|", hours.Select(h => h.ToString(System.Globalization.CultureInfo.InvariantCulture)))">
+                </canvas>
+            }
+            else
+            {
+                <p class="neon-note m-3">No hours logged in the last 3 months</p>
+            }
+        </div>
+    </div>
+</section>
+
+@* ---------- Scripts: Chart.js CDN + local setup script ---------- *@
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="~/js/dashboard.js" asp-append-version="true"></script>
+}
