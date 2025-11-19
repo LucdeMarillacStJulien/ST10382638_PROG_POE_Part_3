@@ -67,7 +67,7 @@ namespace ST10382638_PROG_POE.Controllers
                 if (roles.Contains("HR"))
                 {
                     // Placeholder: HR dashboard not implemented as a separate controller.
-                    return RedirectToAction("Index", "Home");
+                    return RedirectToAction("Index", "HR");
                 }
 
                 // Fallback if user has no mapped role.

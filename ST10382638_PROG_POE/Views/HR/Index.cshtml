@@ -1,0 +1,63 @@
+﻿@using ST10382638_PROG_POE.Models
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<ApplicationUser> UserManager
+
+@model List<ApplicationUser>
+
+@{
+    ViewData["Title"] = "User Management";
+}
+
+<div class="page-head">
+    <h1>User Management</h1>
+    <p class="page-sub">Manage lecturers, coordinators, and managers</p>
+</div>
+
+<div class="glass-card p-3">
+    <div class="mb-3 text-end">
+        <a class="btn btn-primary" asp-action="Create">
+            Create
+        </a>
+    </div>
+
+    <table class="table w-100">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th class="text-end">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in Model ?? new List<ApplicationUser>())
+            {
+                var roles = await UserManager.GetRolesAsync(user);
+                var role = roles.FirstOrDefault() ?? string.Empty;
+
+                <tr>
+                    <td>@user.FirstName @user.Surname</td>
+                    <td>@user.Email</td>
+                    <td>@role</td>
+                    <td class="text-end">
+                        <a asp-action="Details"
+                           asp-route-id="@user.Id"
+                           class="btn btn-outline-info me-2">
+                            Details
+                        </a>
+                        <a asp-action="Edit"
+                           asp-route-id="@user.Id"
+                           class="btn btn-outline-warning me-2">
+                            Edit
+                        </a>
+                        <a asp-action="Delete"
+                           asp-route-id="@user.Id"
+                           class="btn btn-outline-danger">
+                            Delete
+                        </a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

@@ -1,4 +1,5 @@
-﻿<!DOCTYPE html>
+﻿﻿
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -8,14 +9,42 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/ui.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/ST10382638_PROG_POE.styles.css" asp-append-version="true" />
-    
+
 </head>
 <body class="neon-grid">
-    
+
     <header>
         <nav class="navbar navbar-expand-lg navbar-dark">
             <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">CMC Portal</a>
+                @{
+                    // Default if not logged in or no matching role
+                    var brandController = "Home";
+                    var brandAction = "Index";
+
+                    if (User.Identity.IsAuthenticated)
+                    {
+                        if (User.IsInRole("Lecturer"))
+                        {
+                            brandController = "Lecturer";   // Lecturer main view
+                        }
+                        else if (User.IsInRole("Coordinator"))
+                        {
+                            brandController = "Coordinator"; // Coordinator main view
+                        }
+                        else if (User.IsInRole("Manager"))
+                        {
+                            brandController = "Manager";     // Manager main view
+                        }
+                        else if (User.IsInRole("HR"))
+                        {
+                            brandController = "HR";          // HR main view
+                        }
+                    }
+                }
+
+                <a class="navbar-brand" href="@Url.Action(brandAction, brandController)">
+                    CMC Portal
+                </a>
 
                 <button class="navbar-toggler" type="button"
                         data-bs-toggle="collapse"
@@ -27,20 +56,37 @@
                 </button>
 
                 <div class="collapse navbar-collapse" id="mainNav">
-                    <ul class="navbar-nav">
-                        @if(User.Identity.IsAuthenticated)
+                    <!-- LEFT SIDE NAV ITEMS (can be empty, but must exist) -->
+                    <ul class="navbar-nav me-auto">
+                        @* Example for later:
+                        @if (User.IsInRole("Lecturer"))
                         {
-                            <li class="nav-item align-content-lg-end">
-                                <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Lecturer" asp-action="Index">Dashboard</a>
+                            </li>
+                        }
+        *@
+                    </ul>
+
+                    <!-- RIGHT SIDE LOGOUT -->
+                    @if (User.Identity.IsAuthenticated)
+                    {
+                        <ul class="navbar-nav">
+                            <li class="nav-item">
+                                <form asp-controller="Account"
+                                      asp-action="Logout"
+                                      method="post"
+                                      class="d-inline">
                                     @Html.AntiForgeryToken()
-                                    <button type="submit" class="nav-link btn btn-link logout-link p-0">
+                                    <button type="submit" class="btn btn-outline">
                                         Logout
                                     </button>
                                 </form>
                             </li>
-                        }
-                    </ul>
+                        </ul>
+                    }
                 </div>
+
             </div>
         </nav>
     </header>
