@@ -24,6 +24,8 @@ builder.Services.ConfigureApplicationCookie(options =>
 
 
 builder.Services.AddScoped<ClaimDownload>();
+builder.Services.AddScoped<LecturerInvoiceReport>();
+
 
 var app = builder.Build();
 

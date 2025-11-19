@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ST10382638_PROG_POE.Data;
 using ST10382638_PROG_POE.Models;
+using ST10382638_PROG_POE.Service;
 
 namespace ST10382638_PROG_POE.Controllers
 {
@@ -13,12 +14,15 @@ namespace ST10382638_PROG_POE.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly AppDbContext _context;
+        private readonly LecturerInvoiceReport _invoiceReport;
 
-        public HRController(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, AppDbContext context)
+
+        public HRController(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, AppDbContext context, LecturerInvoiceReport invoiceReport)
         {
             _userManager = userManager;
             _roleManager = roleManager;
             _context = context;
+            _invoiceReport = invoiceReport;
         }
 
         // GET: HR/Index
@@ -238,69 +242,69 @@ namespace ST10382638_PROG_POE.Controllers
             if (string.IsNullOrWhiteSpace(id))
                 return NotFound();
 
-            // Load user
             var user = await _userManager.Users
-                .Include(u => u.LecturerProfile)
                 .FirstOrDefaultAsync(u => u.Id == id);
 
             if (user == null)
                 return NotFound();
 
-            // Single role string (for display)
             var roles = await _userManager.GetRolesAsync(user);
             var role = roles.FirstOrDefault() ?? string.Empty;
             ViewBag.Role = role;
 
-            // Lecturer-specific data + claim summary
             LecturerProfile? lecturerProfile = null;
-            object? claimSummary = null;
-            bool hasClaims = false;
+            var claims = new List<Claim>();
+            double totalHoursAll = 0;
+            double totalAmountAll = 0;
 
-            if (role == "Lecturer")
+            if (role.Equals("Lecturer", StringComparison.OrdinalIgnoreCase))
             {
                 lecturerProfile = await _context.LecturerProfile
-                    .Include(p => p.Claim)
-                    .FirstOrDefaultAsync(p => p.UserId == user.Id);
+                    .Include(lp => lp.Claim)
+                    .FirstOrDefaultAsync(lp => lp.UserId == user.Id);
 
-                if (lecturerProfile != null && lecturerProfile.Claim != null && lecturerProfile.Claim.Any())
+                if (lecturerProfile?.Claim != null && lecturerProfile.Claim.Any())
                 {
-                    var claims = lecturerProfile.Claim;
-
-                    // LINQ summary for the view / report
-                    var totalClaims = claims.Count;
-                    var totalHours = claims.Sum(c => c.HoursWorked);
-                    var totalAmount = claims.Sum(c => c.CalculatedAmount);
-
-                    // Group by status so the view can show a breakdown if desired
-                    var statusBreakdown = claims
-                        .GroupBy(c => c.Status)
-                        .Select(g => new
-                        {
-                            Status = g.Key,
-                            Count = g.Count()
-                        })
+                    claims = lecturerProfile.Claim
+                        .OrderByDescending(c => c.SubmittedOn)
                         .ToList();
 
-                    claimSummary = new
-                    {
-                        TotalClaims = totalClaims,
-                        TotalHours = totalHours,
-                        TotalAmount = totalAmount,
-                        StatusBreakdown = statusBreakdown
-                    };
-
-                    hasClaims = true;
+                    totalHoursAll = claims.Sum(c => c.HoursWorked);
+                    totalAmountAll = claims.Sum(c => c.CalculatedAmount);
                 }
             }
 
             ViewBag.LecturerProfile = lecturerProfile;
-            ViewBag.ClaimSummary = claimSummary;
-            ViewBag.HasClaims = hasClaims;
+            ViewBag.AllClaims = claims;
+            ViewBag.TotalHoursAll = totalHoursAll;
+            ViewBag.TotalAmountAll = totalAmountAll;
 
-            // Strongly-typed model is just ApplicationUser; extras are in ViewBag
+            // View model is the ApplicationUser itself (used by Details view)
             return View(user);
         }
 
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DownloadClaimInvoice(int claimId)
+        {
+            var result = await _invoiceReport.BuildSingleClaimInvoiceAsync(claimId);
+            if (result == null)
+                return NotFound("Claim not found or no invoice data.");
+
+            return File(result.Value.Content, "text/csv", result.Value.FileName);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DownloadInvoiceByPeriod(string id, string period, DateTime referenceDate)
+        {
+            var result = await _invoiceReport.BuildPeriodInvoiceAsync(id, period, referenceDate);
+            if (result == null)
+                return NotFound("No claims found for the selected period.");
+
+            return File(result.Value.Content, "text/csv", result.Value.FileName);
+        }
 
         // GET: HR/Delete
         public async Task<IActionResult> Delete(string id)
