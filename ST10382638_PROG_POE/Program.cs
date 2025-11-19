@@ -37,7 +37,7 @@ using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
 
-    var context = services.GetRequiredService<AppDbContext>();
+    var context = services.GetRequiredService<AppDbContext>();  
     // Make sure the database (and Identity tables) exist
     context.Database.EnsureCreated();
 
