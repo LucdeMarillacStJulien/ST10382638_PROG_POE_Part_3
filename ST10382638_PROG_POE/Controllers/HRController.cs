@@ -89,29 +89,78 @@ namespace ST10382638_PROG_POE.Controllers
         }
 
         // GET: HR/Edit
+        // GET: HR/Edit/5
+        [HttpGet]
         public async Task<IActionResult> Edit(string id)
         {
+            if (string.IsNullOrWhiteSpace(id))
+                return NotFound();
+
             var user = await _userManager.FindByIdAsync(id);
             if (user == null) return NotFound();
+
+            // current role
+            var roles = await _userManager.GetRolesAsync(user);
+            var role = roles.FirstOrDefault();
+            ViewBag.Role = role;
+
+            // if lecturer, load profile so we can show hourly rate etc.
+            if (role == "Lecturer")
+            {
+                var profile = await _context.LecturerProfile
+                    .FirstOrDefaultAsync(p => p.UserId == user.Id);
+                ViewBag.LecturerProfile = profile;
+            }
 
             return View(user);
         }
 
         // POST: HR/Edit
         [HttpPost]
-        public async Task<IActionResult> Edit(ApplicationUser input)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(ApplicationUser input, decimal? HourlyRate, bool? IsAvailable)
         {
+            if (input == null || string.IsNullOrWhiteSpace(input.Id))
+                return NotFound();
+
             var user = await _userManager.FindByIdAsync(input.Id);
             if (user == null) return NotFound();
 
+            // base fields for any role
             user.FirstName = input.FirstName;
             user.Surname = input.Surname;
             user.Email = input.Email;
             user.UserName = input.Email;
 
             await _userManager.UpdateAsync(user);
+
+            // get current role
+            var roles = await _userManager.GetRolesAsync(user);
+            var role = roles.FirstOrDefault();
+
+            // lecturer-only extra fields
+            if (role == "Lecturer")
+            {
+                var profile = await _context.LecturerProfile
+                    .FirstOrDefaultAsync(p => p.UserId == user.Id);
+
+                if (profile != null)
+                {
+                    if (HourlyRate.HasValue)
+                        profile.HourlyRate = (double)HourlyRate.Value;
+
+                    if (IsAvailable.HasValue)
+                        profile.IsAvailable = IsAvailable.Value;
+
+                    _context.LecturerProfile.Update(profile);
+                    await _context.SaveChangesAsync();
+                }
+            }
+
             return RedirectToAction(nameof(Index));
         }
+
+
 
         // GET: HR/Details
         public async Task<IActionResult> Details(string id)

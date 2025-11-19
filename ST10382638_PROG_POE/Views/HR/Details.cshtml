@@ -1,0 +1,40 @@
+﻿@using ST10382638_PROG_POE.Models
+@model (ApplicationUser user, string role)
+
+@{
+    ViewData["Title"] = "User Details";
+    var user = Model.user;
+    var role = Model.role;
+}
+
+<div class="page-head">
+    <h1>User Details</h1>
+    <p class="page-sub">View profile and role information</p>
+</div>
+
+<div class="glass-card p-3">
+    <dl class="row mb-0">
+        <dt class="col-sm-3">First Name</dt>
+        <dd class="col-sm-9">@user.FirstName</dd>
+
+        <dt class="col-sm-3">Surname</dt>
+        <dd class="col-sm-9">@user.Surname</dd>
+
+        <dt class="col-sm-3">Email</dt>
+        <dd class="col-sm-9">@user.Email</dd>
+
+        <dt class="col-sm-3">Role</dt>
+        <dd class="col-sm-9">@role</dd>
+
+        <dt class="col-sm-3">User Id</dt>
+        <dd class="col-sm-9">@user.Id</dd>
+    </dl>
+
+    <hr class="hr-neon" />
+
+    <div class="d-flex gap-12 mt-16">
+        <a asp-action="Edit" asp-route-id="@user.Id" class="btn btn-outline">Edit</a>
+        <a asp-action="Delete" asp-route-id="@user.Id" class="btn btn-outline-danger">Delete</a>
+        <a asp-action="Index" class="btn btn-outline">Back to List</a>
+    </div>
+</div>
