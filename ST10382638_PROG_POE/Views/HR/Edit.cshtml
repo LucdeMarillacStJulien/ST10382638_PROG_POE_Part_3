@@ -4,27 +4,25 @@
 @{
     ViewData["Title"] = "Edit User";
 
-    // From HRController.Edit GET
     var role = ViewBag.Role as string ?? "";
     var lecturerProfile = ViewBag.LecturerProfile as LecturerProfile;
 }
 
 <div class="page-head">
     <h1>Edit User</h1>
-    <p class="page-sub">Update user details and lecturer settings (if applicable)</p>
+    <p class="page-sub">Update user details, password and lecturer hourly rate</p>
 </div>
 
 <div class="glass-card p-3">
     <form asp-action="Edit" method="post" class="hover-only-inputs">
         @Html.AntiForgeryToken()
 
-        @* Needed so the POST can find the existing user *@
         <input asp-for="Id" type="hidden" />
 
         <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
         <div class="row g-3">
-            @* ---------- Base user details (all roles) ---------- *@
+            @* ---------- User details (all roles) ---------- *@
             <div class="col-12">
                 <h5 class="mb-2">User Details</h5>
                 <hr class="hr-neon" />
@@ -48,7 +46,24 @@
                 <span asp-validation-for="Email" class="text-danger"></span>
             </div>
 
-            @* ---------- Lecturer-only fields ---------- *@
+            @* ---------- Password (all roles) ---------- *@
+            <div class="col-12 mt-2">
+                <h5 class="mb-2">Password</h5>
+                <hr class="hr-neon" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">New Password</label>
+                <input type="password" name="NewPassword" class="input-clean" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Confirm Password</label>
+                <input type="password" name="ConfirmPassword" class="input-clean" />
+                @Html.ValidationMessage("ConfirmPassword", null, new { @class = "text-danger" })
+            </div>
+
+            @* ---------- Lecturer-only hourly rate ---------- *@
             @if (role == "Lecturer")
             {
                 <div class="col-12 mt-2">
@@ -63,17 +78,6 @@
                            step="0.01"
                            class="input-clean"
                            value="@(lecturerProfile != null ? lecturerProfile.HourlyRate.ToString("0.00") : string.Empty)" />
-                </div>
-
-                <div class="col-md-6">
-                    <label class="form-label">Availability</label>
-                    @{
-                        var available = lecturerProfile?.IsAvailable ?? true;
-                    }
-                    <select name="IsAvailable" class="form-select input-clean">
-                        <option value="true" selected="@(available ? "selected" : null)">Available</option>
-                        <option value="false" selected="@(available ? null : "selected")">Not Available</option>
-                    </select>
                 </div>
             }
         </div>

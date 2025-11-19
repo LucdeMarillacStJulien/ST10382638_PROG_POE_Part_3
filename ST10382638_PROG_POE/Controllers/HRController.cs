@@ -89,7 +89,6 @@ namespace ST10382638_PROG_POE.Controllers
         }
 
         // GET: HR/Edit
-        // GET: HR/Edit/5
         [HttpGet]
         public async Task<IActionResult> Edit(string id)
         {
@@ -99,12 +98,11 @@ namespace ST10382638_PROG_POE.Controllers
             var user = await _userManager.FindByIdAsync(id);
             if (user == null) return NotFound();
 
-            // current role
+            // Current role for conditional lecturer fields
             var roles = await _userManager.GetRolesAsync(user);
             var role = roles.FirstOrDefault();
             ViewBag.Role = role;
 
-            // if lecturer, load profile so we can show hourly rate etc.
             if (role == "Lecturer")
             {
                 var profile = await _context.LecturerProfile
@@ -118,46 +116,118 @@ namespace ST10382638_PROG_POE.Controllers
         // POST: HR/Edit
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(ApplicationUser input, decimal? HourlyRate, bool? IsAvailable)
+        public async Task<IActionResult> Edit(
+            ApplicationUser input,
+            string? NewPassword,
+            string? ConfirmPassword,
+            decimal? HourlyRate)
         {
-            if (input == null || string.IsNullOrWhiteSpace(input.Id))
+            if (string.IsNullOrWhiteSpace(input?.Id))
                 return NotFound();
 
             var user = await _userManager.FindByIdAsync(input.Id);
             if (user == null) return NotFound();
 
-            // base fields for any role
+            if (!ModelState.IsValid)
+            {
+                await PopulateEditViewBags(user);
+                return View(input);
+            }
+
+            // ---------- base user info ----------
             user.FirstName = input.FirstName;
             user.Surname = input.Surname;
             user.Email = input.Email;
             user.UserName = input.Email;
 
-            await _userManager.UpdateAsync(user);
+            // ---------- password change (any role) ----------
+            if (!string.IsNullOrWhiteSpace(NewPassword))
+            {
+                if (NewPassword != ConfirmPassword)
+                {
+                    ModelState.AddModelError("ConfirmPassword", "Password and confirmation do not match.");
+                    await PopulateEditViewBags(user);
+                    return View(input);
+                }
 
-            // get current role
+                var hasPassword = await _userManager.HasPasswordAsync(user);
+
+                if (hasPassword)
+                {
+                    var remove = await _userManager.RemovePasswordAsync(user);
+                    if (!remove.Succeeded)
+                    {
+                        foreach (var err in remove.Errors)
+                            ModelState.AddModelError(string.Empty, err.Description);
+
+                        await PopulateEditViewBags(user);
+                        return View(input);
+                    }
+                }
+
+                var add = await _userManager.AddPasswordAsync(user, NewPassword);
+                if (!add.Succeeded)
+                {
+                    foreach (var err in add.Errors)
+                        ModelState.AddModelError(string.Empty, err.Description);
+
+                    await PopulateEditViewBags(user);
+                    return View(input);
+                }
+            }
+
+            var updateResult = await _userManager.UpdateAsync(user);
+            if (!updateResult.Succeeded)
+            {
+                foreach (var err in updateResult.Errors)
+                    ModelState.AddModelError(string.Empty, err.Description);
+
+                await PopulateEditViewBags(user);
+                return View(input);
+            }
+
+            // ---------- lecturer hourly rate only ----------
             var roles = await _userManager.GetRolesAsync(user);
             var role = roles.FirstOrDefault();
 
-            // lecturer-only extra fields
-            if (role == "Lecturer")
+            if (role == "Lecturer" && HourlyRate.HasValue)
             {
                 var profile = await _context.LecturerProfile
                     .FirstOrDefaultAsync(p => p.UserId == user.Id);
 
-                if (profile != null)
+                if (profile == null)
                 {
-                    if (HourlyRate.HasValue)
-                        profile.HourlyRate = (double)HourlyRate.Value;
-
-                    if (IsAvailable.HasValue)
-                        profile.IsAvailable = IsAvailable.Value;
-
-                    _context.LecturerProfile.Update(profile);
-                    await _context.SaveChangesAsync();
+                    profile = new LecturerProfile
+                    {
+                        UserId = user.Id,
+                        HourlyRate = (double)HourlyRate.Value
+                    };
+                    _context.LecturerProfile.Add(profile);
                 }
+                else
+                {
+                    profile.HourlyRate = (double)HourlyRate.Value;
+                    _context.LecturerProfile.Update(profile);
+                }
+
+                await _context.SaveChangesAsync();
             }
 
             return RedirectToAction(nameof(Index));
+        }
+
+        private async Task PopulateEditViewBags(ApplicationUser user)
+        {
+            var roles = await _userManager.GetRolesAsync(user);
+            var role = roles.FirstOrDefault();
+            ViewBag.Role = role;
+
+            if (role == "Lecturer")
+            {
+                var profile = await _context.LecturerProfile
+                    .FirstOrDefaultAsync(p => p.UserId == user.Id);
+                ViewBag.LecturerProfile = profile;
+            }
         }
 
 
@@ -165,12 +235,72 @@ namespace ST10382638_PROG_POE.Controllers
         // GET: HR/Details
         public async Task<IActionResult> Details(string id)
         {
-            var user = await _userManager.FindByIdAsync(id);
-            if (user == null) return NotFound();
+            if (string.IsNullOrWhiteSpace(id))
+                return NotFound();
 
-            var role = (await _userManager.GetRolesAsync(user)).FirstOrDefault();
-            return View((user, role));
+            // Load user
+            var user = await _userManager.Users
+                .Include(u => u.LecturerProfile)
+                .FirstOrDefaultAsync(u => u.Id == id);
+
+            if (user == null)
+                return NotFound();
+
+            // Single role string (for display)
+            var roles = await _userManager.GetRolesAsync(user);
+            var role = roles.FirstOrDefault() ?? string.Empty;
+            ViewBag.Role = role;
+
+            // Lecturer-specific data + claim summary
+            LecturerProfile? lecturerProfile = null;
+            object? claimSummary = null;
+            bool hasClaims = false;
+
+            if (role == "Lecturer")
+            {
+                lecturerProfile = await _context.LecturerProfile
+                    .Include(p => p.Claim)
+                    .FirstOrDefaultAsync(p => p.UserId == user.Id);
+
+                if (lecturerProfile != null && lecturerProfile.Claim != null && lecturerProfile.Claim.Any())
+                {
+                    var claims = lecturerProfile.Claim;
+
+                    // LINQ summary for the view / report
+                    var totalClaims = claims.Count;
+                    var totalHours = claims.Sum(c => c.HoursWorked);
+                    var totalAmount = claims.Sum(c => c.CalculatedAmount);
+
+                    // Group by status so the view can show a breakdown if desired
+                    var statusBreakdown = claims
+                        .GroupBy(c => c.Status)
+                        .Select(g => new
+                        {
+                            Status = g.Key,
+                            Count = g.Count()
+                        })
+                        .ToList();
+
+                    claimSummary = new
+                    {
+                        TotalClaims = totalClaims,
+                        TotalHours = totalHours,
+                        TotalAmount = totalAmount,
+                        StatusBreakdown = statusBreakdown
+                    };
+
+                    hasClaims = true;
+                }
+            }
+
+            ViewBag.LecturerProfile = lecturerProfile;
+            ViewBag.ClaimSummary = claimSummary;
+            ViewBag.HasClaims = hasClaims;
+
+            // Strongly-typed model is just ApplicationUser; extras are in ViewBag
+            return View(user);
         }
+
 
         // GET: HR/Delete
         public async Task<IActionResult> Delete(string id)
