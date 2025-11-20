@@ -7,6 +7,17 @@ Student: Luc de Marillac St Julien (ST10382638)
 
 - [ST10382638 PROG6212 POE PART 3](https://youtu.be/nwfRXMm1Kxg)
 ---
+## Test Login Credentials (Preloaded Users)
+
+The system uses ASP.NET Identity and comes preloaded with demo users to allow the marker to access each role without creating any accounts.
+
+| Role | Email | Password |
+|-------|--------|----------|
+| Lecturer | **lecturer@demo.local** | **Lecturer123!** |
+| Programme Coordinator | **coordinator@demo.local** | **Coordinator123!** |
+| Academic Manager | **manager@demo.local** | **Manager123!** |
+| HR (Super User) | **hr@demo.local** | **Hr123!** |
+---
 ## 1. Overview
 
 This repository contains **Part 3** of the Contract Monthly Claim System (CMCS) POE.  
