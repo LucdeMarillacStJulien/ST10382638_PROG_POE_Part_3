@@ -3,7 +3,10 @@ PROG6212 • Programming 2B
 Student: Luc de Marillac St Julien (ST10382638)  
 
 ---
+##  YouTube Demo
 
+- [ST10382638 PROG6212 POE PART 3](https://youtu.be/nwfRXMm1Kxg)
+---
 ## 1. Overview
 
 This repository contains **Part 3** of the Contract Monthly Claim System (CMCS) POE.  
@@ -235,7 +238,7 @@ Initial users and roles are seeded via the application’s seeding logic (see Ap
 
 ---
 
-** Repository Contents (for ARC Submission)
+## Repository Contents (for ARC Submission)
 This repository contains the following required artefacts for Part 3:
 - ST10382638_PROG_POE/ — ASP.NET Core MVC solution and source code.
 - Test.ST10382638_PROG_POE/ — MSTest unit test project.
