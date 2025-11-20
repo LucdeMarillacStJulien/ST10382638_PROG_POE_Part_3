@@ -1,4 +1,4 @@
-﻿@* =====================================================================================
+﻿﻿@* =====================================================================================
    Name: Luc de Marillac St Julien
    Student Number: ST10382638
    Group: 1
@@ -22,27 +22,57 @@
 
     <div class="card">
         <div class="card-body">
-            @* Form posts to ClaimController.Create with multipart for file uploads.
-               asp-route-lecturerEmail passes context for redirect after success. *@
-            <form asp-controller="Claim" asp-action="Create" method="post" enctype="multipart/form-data" class="hover-only-inputs">
+            @* Form posts to ClaimController.Create with multipart for file uploads. *@
+            <form asp-controller="Claim"
+                  asp-action="Create"
+                  method="post"
+                  enctype="multipart/form-data"
+                  class="hover-only-inputs">
                 @* Hidden FK for server to associate the claim to this lecturer profile. *@
-                <input type="hidden" name="lecturerProfileId" value="@lecturer.LecturerProfileId"/>
+                <input type="hidden" name="LecturerProfileId" value="@lecturer.LecturerProfileId" />
 
                 @* --------------------- Hours Worked --------------------- *@
                 <div class="mb-3">
                     <label for="HoursWorked" class="form-label">Hours Worked</label>
-                    <input id="HoursWorked" name="HoursWorked" type="number" min="0" max="10" step="0.01"
-                           class="input-clean" placeholder="e.g. 10" />
+                    <input id="HoursWorked"
+                           name="HoursWorked"
+                           type="number"
+                           min="0"
+                           max="10"
+                           step="0.01"
+                           class="input-clean"
+                           placeholder="e.g. 10" />
                     @* Surfaces server-side validation messages for HoursWorked. *@
                     @Html.ValidationMessage("HoursWorked", null, new { @class = "text-danger" })
                 </div>
 
                 @* --------------------- Rate at Submission (read-only) --------------------- *@
-                <div class="input-group">
-                    <span class="input-group-text">R</span>
-                    <input type="text" name="rateAtSubmission"
-                           class="input-clean form-control" readonly
-                           value="@($"{lecturer.HourlyRate:0.00}")" />
+                <div class="mb-3">
+                    <label class="form-label">Hourly Rate (at submission)</label>
+                    <div class="input-group">
+                        <span class="input-group-text">R</span>
+                        <input id="RateAtSubmissionDisplay"
+                               type="text"
+                               name="rateAtSubmission"
+                               class="input-clean form-control"
+                               readonly
+                               value="@($"{lecturer.HourlyRate:0.00}")" />
+                    </div>
+                </div>
+
+                @* --------------------- Auto-calculated Total (preview) --------------------- *@
+                <div class="mb-3">
+                    <label class="form-label">Calculated Total (preview)</label>
+                    <div class="d-flex align-items-baseline gap-2">
+                        <span>R</span>
+                        <span id="CalculatedAmountPreview" class="fw-bold">0.00</span>
+                    </div>
+                    @* Hidden field kept in sync by claim-automation.js
+                       Server still re-calculates CalculatedAmount for correctness. *@
+                    <input type="hidden"
+                           id="CalculatedAmount"
+                           name="CalculatedAmount"
+                           value="0" />
                 </div>
 
                 @* --------------------- Supporting Documents --------------------- *@
@@ -50,32 +80,44 @@
                     <label for="Files" class="form-label">Supporting Documents</label>
                     @* Multiple file input; accept list limits client-side to allowed extensions.
                        Server-side still re-validates type/size before encrypt+save. *@
-                    <input id="Files" name="files" type="file" class="form-control" multiple accept=".pdf,.docx,.xlsx" /> 
+                    <input id="Files"
+                           name="files"
+                           type="file"
+                           class="form-control"
+                           multiple
+                           accept=".pdf,.docx,.xlsx" />
                     @Html.ValidationMessage("files", null, new { @class = "text-danger" })
-                    
                 </div>
 
                 @* --------------------- Notes (optional) --------------------- *@
                 <div class="mb-3">
                     <label for="Notes" class="form-label">Notes (optional)</label>
-                    <textarea id="Notes" name="Notes" rows="4" maxlength="200"
+                    <textarea id="Notes"
+                              name="Notes"
+                              rows="4"
+                              maxlength="200"
                               class="input-clean"
                               placeholder="Add any context for the approver…"></textarea>
-                    @* Simple character count display; actual counting handled via client script if present. *@
+                    @* Simple character count display; actual counting can be added in JS if needed. *@
                 </div>
 
                 @* --------------------- Actions --------------------- *@
                 <div class="d-flex gap-12">
                     <button type="submit" class="btn btn-primary">Create Claim</button>
-                    @* Cancel returns to Lecturer dashboard for the same email context. *@
-                    <a asp-controller="Lecturer" asp-action="Index" class="btn btn-outline">Cancel</a>
+                    @* Cancel returns to Lecturer dashboard. *@
+                    <a asp-controller="Lecturer"
+                       asp-action="Index"
+                       class="btn btn-outline">Cancel</a>
                 </div>
             </form>
         </div>
-    </div> 
+    </div>
 </section>
 
 @section Scripts {
     @* jQuery validation/unobtrusive scripts partial (for client-side validation). *@
     <partial name="_ValidationScriptsPartial" />
+
+    @* Custom automation script for live calculated total (Lecturer view). *@
+    <script src="~/js/claim-automation.js"></script>
 }
