@@ -1,9 +1,22 @@
-﻿@using ST10382638_PROG_POE.Models
+﻿@* =====================================================================================
+   Name: Luc de Marillac St Julien
+   Student Number: ST10382638
+   Group: 1
+
+   References:
+     1) Project outline/instructions: https://chatgpt.com/c/691e5672-00c8-8328-b4da-a2c0b7ea1c63
+     2) C# Reference & Tutorials:   https://www.w3schools.com/cs/index.php
+   ===================================================================================== *@
+
+@using ST10382638_PROG_POE.Models
 @model ApplicationUser
 
 @{
     ViewData["Title"] = "Edit User";
 
+    // Data provided from HRController.Edit:
+    // - ViewBag.Role: current primary role (e.g. Lecturer, Coordinator, Manager, HR)
+    // - ViewBag.LecturerProfile: lecturer-specific data including HourlyRate
     var role = ViewBag.Role as string ?? "";
     var lecturerProfile = ViewBag.LecturerProfile as LecturerProfile;
 }
@@ -14,9 +27,11 @@
 </div>
 
 <div class="glass-card p-3">
+    @* Form posts back to HR/Edit (POST) with anti-forgery protection *@
     <form asp-action="Edit" method="post" class="hover-only-inputs">
         @Html.AntiForgeryToken()
 
+        @* Hidden Id required for binding the correct ApplicationUser *@
         <input asp-for="Id" type="hidden" />
 
         <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
@@ -82,6 +97,7 @@
             }
         </div>
 
+        @* ---------- Actions ---------- *@
         <div class="d-flex gap-12 mt-16">
             <button type="submit" class="btn btn-primary">Save Changes</button>
             <a asp-action="Index" class="btn btn-outline">Back</a>
@@ -90,5 +106,8 @@
 </div>
 
 @section Scripts {
+    @* Client-side validation scripts for this form *@
     <partial name="_ValidationScriptsPartial" />
 }
+
+@* ---------------------------------...ooo000 END OF FILE 000ooo...--------------------------------- *@

@@ -4,7 +4,7 @@
 // Group: 1
 //
 // References:
-//   1) Project outline/instructions: https://chatgpt.com/c/68f2c6ad-b79c-832c-97a1-59b6f53334a9
+//   1) Project outline/instructions: https://chatgpt.com/c/691e5672-00c8-8328-b4da-a2c0b7ea1c63
 //   2) C# Reference & Tutorials:   https://www.w3schools.com/cs/index.php
 // =====================================================================================
 
@@ -27,7 +27,9 @@ namespace ST10382638_PROG_POE.Data
         /// <param name="options">The EF Core DbContext configuration options.</param>
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
-        // ---------- Entity Sets (map to database tables) ----------
+        // -------------------------------------------------------------------------
+        // Entity Sets (map to database tables)
+        // -------------------------------------------------------------------------
 
         /// <summary>
         /// Gets or sets the set of LecturerProfile entities.
@@ -48,3 +50,4 @@ namespace ST10382638_PROG_POE.Data
         public DbSet<SupportingDoc> SupportingDoc { get; set; }
     }
 }
+//------------------------------------------...ooo000 END OF FILE 000ooo...------------------------------------------------------//

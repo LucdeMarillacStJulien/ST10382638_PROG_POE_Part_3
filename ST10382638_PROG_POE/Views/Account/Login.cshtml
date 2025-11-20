@@ -1,4 +1,16 @@
-﻿@model ST10382638_PROG_POE.Models.Login
+﻿@* 
+=====================================================================================
+Name: Luc de Marillac St Julien
+Student Number: ST10382638
+Group: 1
+
+References:
+  1) Project outline/instructions: https://chatgpt.com/c/691e5672-00c8-8328-b4da-a2c0b7ea1c63
+  2) C# / Razor Reference & Tutorials: https://www.w3schools.com/cs/index.php
+=====================================================================================
+*@
+
+@model ST10382638_PROG_POE.Models.Login
 
 @{
     ViewData["Title"] = "Login";
@@ -11,13 +23,14 @@
 
         <div class="card">
             <div class="card-body">
-                @* Summary of model validation errors *@
+                @* Displays validation summary for model-level errors *@
                 <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
+                @* Login form posts to Account/Login with anti-forgery protection *@
                 <form asp-action="Login" method="post" class="hover-only-inputs">
                     @Html.AntiForgeryToken()
 
-                    @* Email *@
+                    @* Email input field *@
                     <div class="mb-3">
                         <label asp-for="Email" class="form-label"></label>
                         <input asp-for="Email"
@@ -27,7 +40,7 @@
                         <span asp-validation-for="Email" class="text-danger"></span>
                     </div>
 
-                    @* Password *@
+                    @* Password input field *@
                     <div class="mb-3">
                         <label asp-for="Password" class="form-label"></label>
                         <input asp-for="Password"
@@ -37,12 +50,13 @@
                         <span asp-validation-for="Password" class="text-danger"></span>
                     </div>
 
-                    @* Remember me (currently disabled) *@
+                    @* Optional "Remember me" checkbox (currently disabled in UI) *@
                     @* <div class="form-check mb-3">
                         <input asp-for="RememberMe" class="form-check-input" />
                         <label asp-for="RememberMe" class="form-check-label"></label>
                     </div> *@
 
+                    @* Submit button to trigger login *@
                     <button type="submit" class="btn btn-primary w-100">
                         Sign In
                     </button>
@@ -53,5 +67,8 @@
 </div>
 
 @section Scripts {
+    @* Client-side validation scripts for this form *@
     @await Html.PartialAsync("_ValidationScriptsPartial")
 }
+
+@* ---------------------------------...ooo000 END OF FILE 000ooo...--------------------------------- *@

@@ -1,4 +1,14 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿// =====================================================================================
+// Name: Luc de Marillac St Julien
+// Student Number: ST10382638
+// Group: 1
+//
+// References:
+//   1) Project outline/instructions: https://chatgpt.com/c/691e5672-00c8-8328-b4da-a2c0b7ea1c63
+//   2) C# Reference & Tutorials:   https://www.w3schools.com/cs/index.php
+// =====================================================================================
+
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -8,15 +18,21 @@ using ST10382638_PROG_POE.Service;
 
 namespace ST10382638_PROG_POE.Controllers
 {
+    // Restricts access to HR role only
     [Authorize(Roles = "HR")]
     public class HRController : Controller
     {
+        // -------------------------------------------------------------------------
+        // Dependencies
+        // -------------------------------------------------------------------------
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly AppDbContext _context;
         private readonly LecturerInvoiceReport _invoiceReport;
 
-
+        // -------------------------------------------------------------------------
+        // Constructor: inject Identity managers, DbContext and invoice report service
+        // -------------------------------------------------------------------------
         public HRController(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, AppDbContext context, LecturerInvoiceReport invoiceReport)
         {
             _userManager = userManager;
@@ -25,6 +41,9 @@ namespace ST10382638_PROG_POE.Controllers
             _invoiceReport = invoiceReport;
         }
 
+        // -------------------------------------------------------------------------
+        // HR dashboard: list all non-HR users
+        // -------------------------------------------------------------------------
         // GET: HR/Index
         public async Task<IActionResult> Index()
         {
@@ -44,13 +63,18 @@ namespace ST10382638_PROG_POE.Controllers
             return View(users);
         }
 
-
+        // -------------------------------------------------------------------------
+        // Display create user form (HR can create any role)
+        // -------------------------------------------------------------------------
         // GET: HR/Create
         public IActionResult Create()
         {
             return View();
         }
 
+        // -------------------------------------------------------------------------
+        // Create a new ApplicationUser and, if Lecturer, create a LecturerProfile
+        // -------------------------------------------------------------------------
         // POST: HR/Create
         [HttpPost]
         public async Task<IActionResult> Create(ApplicationUser input, string role, decimal? HourlyRate)
@@ -66,6 +90,7 @@ namespace ST10382638_PROG_POE.Controllers
                 Surname = input.Surname
             };
 
+            // Create Identity user with provided password
             var result = await _userManager.CreateAsync(user, input.PasswordHash);
             if (!result.Succeeded)
             {
@@ -74,9 +99,10 @@ namespace ST10382638_PROG_POE.Controllers
                 return View(input);
             }
 
+            // Assign selected role
             await _userManager.AddToRoleAsync(user, role);
 
-            // If lecturer selected, also create lecturer profile
+            // If lecturer selected, also create lecturer profile with hourly rate
             if (role == "Lecturer" && HourlyRate.HasValue)
             {
                 var profile = new LecturerProfile
@@ -92,6 +118,9 @@ namespace ST10382638_PROG_POE.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        // -------------------------------------------------------------------------
+        // Display edit form for a specific user (HR can edit any user)
+        // -------------------------------------------------------------------------
         // GET: HR/Edit
         [HttpGet]
         public async Task<IActionResult> Edit(string id)
@@ -107,6 +136,7 @@ namespace ST10382638_PROG_POE.Controllers
             var role = roles.FirstOrDefault();
             ViewBag.Role = role;
 
+            // If lecturer, load lecturer profile to populate extra fields
             if (role == "Lecturer")
             {
                 var profile = await _context.LecturerProfile
@@ -117,6 +147,9 @@ namespace ST10382638_PROG_POE.Controllers
             return View(user);
         }
 
+        // -------------------------------------------------------------------------
+        // Update user details, password (optional), and lecturer hourly rate
+        // -------------------------------------------------------------------------
         // POST: HR/Edit
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -147,6 +180,7 @@ namespace ST10382638_PROG_POE.Controllers
             // ---------- password change (any role) ----------
             if (!string.IsNullOrWhiteSpace(NewPassword))
             {
+                // Confirm new password matches confirmation
                 if (NewPassword != ConfirmPassword)
                 {
                     ModelState.AddModelError("ConfirmPassword", "Password and confirmation do not match.");
@@ -158,6 +192,7 @@ namespace ST10382638_PROG_POE.Controllers
 
                 if (hasPassword)
                 {
+                    // Remove existing password before adding new one
                     var remove = await _userManager.RemovePasswordAsync(user);
                     if (!remove.Succeeded)
                     {
@@ -169,6 +204,7 @@ namespace ST10382638_PROG_POE.Controllers
                     }
                 }
 
+                // Add new password
                 var add = await _userManager.AddPasswordAsync(user, NewPassword);
                 if (!add.Succeeded)
                 {
@@ -180,6 +216,7 @@ namespace ST10382638_PROG_POE.Controllers
                 }
             }
 
+            // Persist user updates
             var updateResult = await _userManager.UpdateAsync(user);
             if (!updateResult.Succeeded)
             {
@@ -201,6 +238,7 @@ namespace ST10382638_PROG_POE.Controllers
 
                 if (profile == null)
                 {
+                    // Create lecturer profile if it does not exist
                     profile = new LecturerProfile
                     {
                         UserId = user.Id,
@@ -210,6 +248,7 @@ namespace ST10382638_PROG_POE.Controllers
                 }
                 else
                 {
+                    // Update existing hourly rate
                     profile.HourlyRate = (double)HourlyRate.Value;
                     _context.LecturerProfile.Update(profile);
                 }
@@ -220,6 +259,9 @@ namespace ST10382638_PROG_POE.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        // -------------------------------------------------------------------------
+        // Helper: populate ViewBag for Edit view (role + lecturer profile)
+        // -------------------------------------------------------------------------
         private async Task PopulateEditViewBags(ApplicationUser user)
         {
             var roles = await _userManager.GetRolesAsync(user);
@@ -234,8 +276,9 @@ namespace ST10382638_PROG_POE.Controllers
             }
         }
 
-
-
+        // -------------------------------------------------------------------------
+        // Show full details for a user; if Lecturer, include claims summary
+        // -------------------------------------------------------------------------
         // GET: HR/Details
         public async Task<IActionResult> Details(string id)
         {
@@ -257,6 +300,7 @@ namespace ST10382638_PROG_POE.Controllers
             double totalHoursAll = 0;
             double totalAmountAll = 0;
 
+            // If lecturer, load profile and calculate claim totals
             if (role.Equals("Lecturer", StringComparison.OrdinalIgnoreCase))
             {
                 lecturerProfile = await _context.LecturerProfile
@@ -283,7 +327,9 @@ namespace ST10382638_PROG_POE.Controllers
             return View(user);
         }
 
-
+        // -------------------------------------------------------------------------
+        // Generate and download invoice for a single claim (CSV)
+        // -------------------------------------------------------------------------
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DownloadClaimInvoice(int claimId)
@@ -295,6 +341,9 @@ namespace ST10382638_PROG_POE.Controllers
             return File(result.Value.Content, "text/csv", result.Value.FileName);
         }
 
+        // -------------------------------------------------------------------------
+        // Generate and download invoice for all claims in a period for a lecturer
+        // -------------------------------------------------------------------------
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DownloadInvoiceByPeriod(string id, string period, DateTime referenceDate)
@@ -306,6 +355,9 @@ namespace ST10382638_PROG_POE.Controllers
             return File(result.Value.Content, "text/csv", result.Value.FileName);
         }
 
+        // -------------------------------------------------------------------------
+        // Confirm delete view for a user
+        // -------------------------------------------------------------------------
         // GET: HR/Delete
         public async Task<IActionResult> Delete(string id)
         {
@@ -315,6 +367,9 @@ namespace ST10382638_PROG_POE.Controllers
             return View(user);
         }
 
+        // -------------------------------------------------------------------------
+        // Permanently delete a user and, if Lecturer, remove LecturerProfile as well
+        // -------------------------------------------------------------------------
         // POST: HR/Delete
         [HttpPost, ActionName("Delete")]
         public async Task<IActionResult> DeleteConfirmed(string id)
@@ -324,7 +379,7 @@ namespace ST10382638_PROG_POE.Controllers
 
             var role = (await _userManager.GetRolesAsync(user)).FirstOrDefault();
 
-            // delete lecturer profile if the user is lecturer
+            // Delete lecturer profile if the user is a lecturer
             if (role == "Lecturer")
             {
                 var profile = _context.LecturerProfile.FirstOrDefault(p => p.UserId == user.Id);
@@ -339,3 +394,4 @@ namespace ST10382638_PROG_POE.Controllers
         }
     }
 }
+//------------------------------------------...ooo000 END OF FILE 000ooo...------------------------------------------------------//

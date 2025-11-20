@@ -1,18 +1,21 @@
-﻿﻿@* =====================================================================================
+﻿@* =====================================================================================
    Name: Luc de Marillac St Julien
    Student Number: ST10382638
    Group: 1
 
    References:
-     1) Project outline/instructions: https://chatgpt.com/c/68f2c6ad-b79c-832c-97a1-59b6f53334a9
+     1) Project outline/instructions: https://chatgpt.com/c/691e5672-00c8-8328-b4da-a2c0b7ea1c63
      2) C# Reference & Tutorials:   https://www.w3schools.com/cs/index.php
    ===================================================================================== *@
 
+@using ST10382638_PROG_POE.Models
+
 @{
     ViewData["Title"] = "Submit Claim";
-    // Pull contextual data injected by the controller for display/binding.
-    // - lecturer: provides HourlyRate and Id
-    // - lecturerEmail: used in route for postback and Cancel link
+
+    // Context injected by ClaimController.Create (GET):
+    // - ViewBag.Lecturer: LecturerProfile with HourlyRate and LecturerProfileId
+    // - ViewBag.Email: lecturer email used in navigation
     var lecturer = ViewBag.Lecturer as LecturerProfile;
     var lecturerEmail = ViewBag.Email as string;
 }
@@ -22,13 +25,14 @@
 
     <div class="card">
         <div class="card-body">
-            @* Form posts to ClaimController.Create with multipart for file uploads. *@
+            @* Form posts to ClaimController.Create with multipart for file uploads *@
             <form asp-controller="Claim"
                   asp-action="Create"
                   method="post"
                   enctype="multipart/form-data"
                   class="hover-only-inputs">
-                @* Hidden FK for server to associate the claim to this lecturer profile. *@
+
+                @* Hidden FK to associate the claim with this lecturer profile *@
                 <input type="hidden" name="LecturerProfileId" value="@lecturer.LecturerProfileId" />
 
                 @* --------------------- Hours Worked --------------------- *@
@@ -42,7 +46,7 @@
                            step="0.01"
                            class="input-clean"
                            placeholder="e.g. 10" />
-                    @* Surfaces server-side validation messages for HoursWorked. *@
+                    @* Server-side validation message for HoursWorked *@
                     @Html.ValidationMessage("HoursWorked", null, new { @class = "text-danger" })
                 </div>
 
@@ -67,8 +71,7 @@
                         <span>R</span>
                         <span id="CalculatedAmountPreview" class="fw-bold">0.00</span>
                     </div>
-                    @* Hidden field kept in sync by claim-automation.js
-                       Server still re-calculates CalculatedAmount for correctness. *@
+                    @* Hidden field updated by claim-automation.js; server still recalculates *@
                     <input type="hidden"
                            id="CalculatedAmount"
                            name="CalculatedAmount"
@@ -78,8 +81,7 @@
                 @* --------------------- Supporting Documents --------------------- *@
                 <div class="mb-3">
                     <label for="Files" class="form-label">Supporting Documents</label>
-                    @* Multiple file input; accept list limits client-side to allowed extensions.
-                       Server-side still re-validates type/size before encrypt+save. *@
+                    @* Multiple upload; server re-validates file type and size *@
                     <input id="Files"
                            name="files"
                            type="file"
@@ -98,13 +100,13 @@
                               maxlength="200"
                               class="input-clean"
                               placeholder="Add any context for the approver…"></textarea>
-                    @* Simple character count display; actual counting can be added in JS if needed. *@
+                    @* Character counting can be added client-side if required *@
                 </div>
 
                 @* --------------------- Actions --------------------- *@
                 <div class="d-flex gap-12">
                     <button type="submit" class="btn btn-primary">Create Claim</button>
-                    @* Cancel returns to Lecturer dashboard. *@
+                    @* Cancel returns to Lecturer dashboard *@
                     <a asp-controller="Lecturer"
                        asp-action="Index"
                        class="btn btn-outline">Cancel</a>
@@ -115,9 +117,11 @@
 </section>
 
 @section Scripts {
-    @* jQuery validation/unobtrusive scripts partial (for client-side validation). *@
+    @* Client-side validation scripts *@
     <partial name="_ValidationScriptsPartial" />
 
-    @* Custom automation script for live calculated total (Lecturer view). *@
+    @* Custom automation script for live calculated total *@
     <script src="~/js/claim-automation.js"></script>
 }
+
+@* ---------------------------------...ooo000 END OF FILE 000ooo...--------------------------------- *@
