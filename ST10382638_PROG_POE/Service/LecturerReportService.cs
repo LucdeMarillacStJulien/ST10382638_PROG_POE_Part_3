@@ -50,7 +50,11 @@ namespace ST10382638_PROG_POE.Service
                 return null;
 
             var user = claim.LecturerProfile.User;
+
+            // Use en-ZA for dates if desired
             var za = CultureInfo.CreateSpecificCulture("en-ZA");
+            // Use invariant culture for numeric CSV fields so decimals use '.' not ','
+            var csvCulture = CultureInfo.InvariantCulture;
 
             var sb = new StringBuilder();
 
@@ -72,9 +76,9 @@ namespace ST10382638_PROG_POE.Service
 
             sb.AppendLine(
                 $"{claim.ClaimId}," +
-                $"{claim.HoursWorked.ToString("0.##", za)}," +
-                $"{claim.RateAtSubmission.ToString("F2", za)}," +
-                $"{claim.CalculatedAmount.ToString("F2", za)}," +
+                $"{claim.HoursWorked.ToString("0.##", csvCulture)}," +
+                $"{claim.RateAtSubmission.ToString("F2", csvCulture)}," +
+                $"{claim.CalculatedAmount.ToString("F2", csvCulture)}," +
                 $"{claim.Status}," +
                 $"{notes}");
 
@@ -154,6 +158,8 @@ namespace ST10382638_PROG_POE.Service
                 return null;
 
             var za = CultureInfo.CreateSpecificCulture("en-ZA");
+            var csvCulture = CultureInfo.InvariantCulture;
+
             var sb = new StringBuilder();
 
             // Header
@@ -181,16 +187,16 @@ namespace ST10382638_PROG_POE.Service
                 sb.AppendLine(
                     $"{c.ClaimId}," +
                     $"{c.SubmittedOn:yyyy-MM-dd}," +
-                    $"{c.HoursWorked.ToString("0.##", za)}," +
-                    $"{c.RateAtSubmission.ToString("F2", za)}," +
-                    $"{c.CalculatedAmount.ToString("F2", za)}," +
+                    $"{c.HoursWorked.ToString("0.##", csvCulture)}," +
+                    $"{c.RateAtSubmission.ToString("F2", csvCulture)}," +
+                    $"{c.CalculatedAmount.ToString("F2", csvCulture)}," +
                     $"{c.Status}," +
                     $"{notes}");
             }
 
             sb.AppendLine();
-            sb.AppendLine($",,,TOTAL HOURS,{totalHours.ToString("0.##", za)}");
-            sb.AppendLine($",,,TOTAL AMOUNT,{totalAmount.ToString("F2", za)}");
+            sb.AppendLine($",,,TOTAL HOURS,{totalHours.ToString("0.##", csvCulture)}");
+            sb.AppendLine($",,,TOTAL AMOUNT,{totalAmount.ToString("F2", csvCulture)}");
 
             var bytes = Encoding.UTF8.GetBytes(sb.ToString());
 
