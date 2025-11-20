@@ -225,3 +225,22 @@ Error handling highlights:
    ```powershell
    Add-Migration InitialCreate
    Update-Database
+   
+### 6.4 Run the Application
+1. Set ST10382638_PROG_POE as the startup project.
+2. Press F5 (or click the green run button).
+3. The site will launch in your browser at https://localhost:xxxx/.
+
+Initial users and roles are seeded via the application’s seeding logic (see AppDbContext and startup configuration). HR logins can then be used to create additional lecturers, coordinators, and managers.
+
+---
+
+** Repository Contents (for ARC Submission)
+This repository contains the following required artefacts for Part 3:
+- ST10382638_PROG_POE/ — ASP.NET Core MVC solution and source code.
+- Test.ST10382638_PROG_POE/ — MSTest unit test project.
+- README.md — This documentation, updated for Part 3 automation and lecturer feedback.
+- PROG6212_Part3_Presentation.pptx — PowerPoint presentation showcasing:
+  - Updates from Part 2 → Part 3.
+  - Key automated features and code screenshots.
+- Final Part 3 YouTube demo link (unlisted) in the section below.
