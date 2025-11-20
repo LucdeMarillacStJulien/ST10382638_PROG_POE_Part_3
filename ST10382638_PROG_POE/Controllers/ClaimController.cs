@@ -59,6 +59,7 @@ namespace ST10382638_PROG_POE.Controllers
                 return BadRequest("Lecturer profile id is required.");
             }
 
+
             // Load the lecturer profile with linked user to access email and hourly rate
             var lecturer = await _context.LecturerProfile
                 .Include(lp => lp.User)
@@ -97,12 +98,14 @@ namespace ST10382638_PROG_POE.Controllers
             // 1) Server-side validation
             // ---------------------------------------------------------------------
 
+
+
             // Validate supporting document types and file sizes
             if (files != null && files.Count > 0)
             {
                 var allowedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
                 {
-                    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".png", ".jpg", ".jpeg"
+                    ".pdf", ".doc", ".docx", ".xls", ".xlsx"
                 };
                 const long maxFileSize = 10 * 1024 * 1024; // 10 MB
 
@@ -116,10 +119,11 @@ namespace ST10382638_PROG_POE.Controllers
                             $"{f.FileName} has an invalid file type. Allowed: .pdf, .doc(x), .xls(x), .png, .jpg, .jpeg");
                     }
 
+                    // === SIMPLE SIZE CHECK REQUESTED ===
                     if (f.Length > maxFileSize)
                     {
-                        ModelState.AddModelError("files",
-                            $"{f.FileName} exceeds the {(maxFileSize / 1024 / 1024)} MB limit.");
+                        ModelState.AddModelError("", "File is bigger than the maximum allowed size.");
+                        return View(claim);
                     }
                 }
             }

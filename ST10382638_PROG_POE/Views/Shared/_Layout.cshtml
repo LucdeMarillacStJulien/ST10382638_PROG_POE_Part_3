@@ -26,18 +26,22 @@
                         if (User.IsInRole("Lecturer"))
                         {
                             brandController = "Lecturer";   // Lecturer main view
+                            brandAction = "Index";
                         }
                         else if (User.IsInRole("Coordinator"))
                         {
                             brandController = "Coordinator"; // Coordinator main view
+                            brandAction = "Index";
                         }
                         else if (User.IsInRole("Manager"))
                         {
                             brandController = "Manager";     // Manager main view
+                            brandAction = "Index";
                         }
                         else if (User.IsInRole("HR"))
                         {
                             brandController = "HR";          // HR main view
+                            brandAction = "Index";
                         }
                     }
                 }

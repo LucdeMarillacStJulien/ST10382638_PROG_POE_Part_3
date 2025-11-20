@@ -87,7 +87,8 @@
                            type="file"
                            class="form-control"
                            multiple
-                           accept=".pdf,.docx,.xlsx" />
+                           accept=".pdf,.docx,.xlsx"
+                           data-max-size="10485760" />
                     @Html.ValidationMessage("files", null, new { @class = "text-danger" })
                 </div>
 
@@ -122,6 +123,7 @@
 
     @* Custom automation script for live calculated total *@
     <script src="~/js/claim-automation.js"></script>
+    <script src="~/js/claim-file-size-limit.js"></script>
 }
 
 @* ---------------------------------...ooo000 END OF FILE 000ooo...--------------------------------- *@
