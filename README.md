@@ -203,38 +203,18 @@ Error handling highlights:
 
 ## 6. How to Run the Application Locally
 
-### 6.1 Prerequisites
-
-- **Visual Studio 2022** (or later) with:
-  - ASP.NET and web development workload.
-  - .NET 8 SDK installed.
-- **SQL Server LocalDB** (installed with Visual Studio).
-- Internet access for NuGet package restore.
-
-### 6.2 Clone / Download
-
-1. On GitHub, click the green `<> Code` button.
-2. Choose **Download ZIP** or **Clone** the repository.
-3. If downloading ZIP:
-   - Extract the contents to a folder (e.g. `C:\CMCS_Part3`).
-4. Open `ST10382638_PROG_POE.sln` in Visual Studio.
-
-### 6.3 Restore and Migrate Database
-
-1. In Visual Studio, open **Tools → NuGet Package Manager → Package Manager Console**.
-2. Ensure the **Default project** is `ST10382638_PROG_POE`.
-3. Run (if migrations are not already applied):
-
-   ```powershell
-   Add-Migration InitialCreate
-   Update-Database
-   
-### 6.4 Run the Application
-1. Set ST10382638_PROG_POE as the startup project.
-2. Press F5 (or click the green run button).
-3. The site will launch in your browser at https://localhost:xxxx/.
-
-Initial users and roles are seeded via the application’s seeding logic (see AppDbContext and startup configuration). HR logins can then be used to create additional lecturers, coordinators, and managers.
+1. Click on the Green code button with the text `<> Code`
+2. Select the option download zip
+3. Download the zip to a safe location
+4. Unzip the file a place in the same or different folder as the zipped folder that you just downloaded.
+5. Open the file and click on the sln file name ST10382638_PROG_POE
+6. Click on the tools in the top bar of Visual Studio
+7. Then hover over Nuget Package Manager
+8. You will see the options pop up alongside, Select Package Manager Console
+9. Run the following commands these commands can be copied and pasted
+- `Add-Migration LecturerMigration`
+- `Update-Database`
+10. Once both commands have been run you can run the program by clicking the green arrow at the top of Visual Studio.
 
 ---
 
