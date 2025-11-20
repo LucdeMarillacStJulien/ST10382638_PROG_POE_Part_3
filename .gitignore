@@ -361,4 +361,7 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
-/ST10382638_PROG_POE/App_Data/ClaimDocs
+# Ignore encrypted claim files
+/ST10382638_PROG_POE/App_Data/ClaimDocs/
+/ST10382638_PROG_POE/App_Data/ClaimDocs/*
+ST10382638_PROG_POE/App_Data/ClaimDocs/**
