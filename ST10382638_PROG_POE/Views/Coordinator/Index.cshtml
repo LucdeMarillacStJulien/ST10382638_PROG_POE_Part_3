@@ -1,4 +1,4 @@
-﻿@* =====================================================================================
+﻿﻿@* =====================================================================================
    Name: Luc de Marillac St Julien
    Student Number: ST10382638
    Group: 1
@@ -8,11 +8,14 @@
      2) C# Reference & Tutorials:   https://www.w3schools.com/cs/index.php
    ===================================================================================== *@
 
+@using System.Collections.Generic
+
 @{
     ViewData["Title"] = "Coordinator Dashboard";
-    // Dummy data that has been generate by ChatGPT to give a rough idea what the UI could end up looking like in part 2 of the poe
+    // Dummy data that has been generate by ChatGPT to give a ro... idea what the UI could end up looking like in part 2 of the poe
     var pending = ViewBag.PendingClaims as List<Claim> ?? new();
     var pendingCount = (int)(ViewBag.PendingCount ?? 0);
+    var evaluations = ViewBag.Evaluations as Dictionary<int, ClaimEvaluationResult> ?? new();
     var coordName = ViewBag.CoordinatorName as string ?? "Manager/Coordinator";
     var email = ViewBag.CoordinatorEmail as string ?? "";
 
@@ -54,6 +57,13 @@
                 ? $"{c.LecturerProfile.User.FirstName} {c.LecturerProfile.User.Surname}"
                 : "Unknown Lecturer";
 
+                // Automated evaluation result (may be null if service not run for some reason).
+                ClaimEvaluationResult? eval = null;
+                if (evaluations != null && evaluations.ContainsKey(c.ClaimId))
+                {
+                    eval = evaluations[c.ClaimId];
+                }
+
                 // Friendly claim number: year + zero-padded id.
                 var claimNo = $"CMC-{c.SubmittedOn:yyyy}-{c.ClaimId:D3}";
 
@@ -91,6 +101,27 @@
                                 <div class="text-muted small">Amount</div>
                                 <div class="fw-semibold">@amount.ToString("C", za)</div>
                             </div>
+                            @* Automated rule evaluation summary *@
+                            @if (eval != null)
+                            {
+                                <div class="mt-2 small">
+                                    <div class="text-muted">Automated checks</div>
+                                    <div class="fw-semibold">
+                                        @(eval.IsValid ? "All checks passed" : "Issues detected")
+                                    </div>
+                                    <ul class="mb-0 ps-3">
+                                        <li>Hours: @(eval.HoursWithinRange ? "within 0.25–10.0 range" : "outside allowed range")</li>
+                                        <li>Rate: @(eval.RatePositive ? "greater than zero" : "must be greater than zero")</li>
+                                        <li>
+                                            Amount:
+                                            @(eval.AmountMatchesHoursAndRate
+                                                                            ? "matches hours × rate"
+                                                                            : $"expected {eval.ExpectedAmount.ToString("C", za)} based on hours × rate")
+                            </li>
+                        </ul>
+                    </div>
+                                        }
+
                         </div>
 
                         <div class="mt-2">
@@ -98,18 +129,18 @@
                             @if (!string.IsNullOrWhiteSpace(c.Notes))
                             {
                                 <div class="mt-2">
-                                    
-                                    <div class="fw-semibold">@c.Notes</div>
+                                    @Html.Raw(c.Notes.Replace(Environment.NewLine, "<br />"))
                                 </div>
                             }
                             else
                             {
-                                <div class="text-muted">No Notes</div>
+                                <div class="text-muted">No additional notes.</div>
                             }
                         </div>
-                        @* Document list (if any) *@
-                        <div class="mt-2">
-                            <div class="text-muted">Documents</div>
+
+                        @* Supporting documents summary *@
+                        <div class="mt-3">
+                            <div class="text-muted small">Supporting Documents</div>
                             @if (c.SupportingDocs != null && c.SupportingDocs.Any())
                             {
                                 <ul class="mb-2">
@@ -129,6 +160,7 @@
                         <div class="mt-auto d-flex align-items-center justify-content-between gap-2">
                             @* Verify (Coordinator) -> ClaimController.Verify (POST) *@
                             <form asp-controller="Claim" asp-action="Verify" method="post" class="m-0">
+                                @Html.AntiForgeryToken()
                                 <input type="hidden" name="id" value="@c.ClaimId" />
                                 <button type="submit" class="btn btn-neon btn-neon-approve">Verify</button>
                             </form>
@@ -139,8 +171,8 @@
                                 <a asp-controller="Claim"
                                    asp-action="DownloadClaimFolder"
                                    asp-route-claimId="@c.ClaimId"
-                                   class="btn btn-neon btn-neon-details">
-                                    Download Files
+                                   class="btn btn-outline btn-sm">
+                                    Download Docs
                                 </a>
                             }
 

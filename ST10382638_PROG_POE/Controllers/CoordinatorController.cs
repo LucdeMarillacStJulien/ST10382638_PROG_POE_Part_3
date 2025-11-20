@@ -12,6 +12,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ST10382638_PROG_POE.Data;
+using ST10382638_PROG_POE.Models;
+using ST10382638_PROG_POE.Service;
 using System.Threading.Tasks;
 
 namespace ST10382638_PROG_POE.Controllers
@@ -26,14 +28,16 @@ namespace ST10382638_PROG_POE.Controllers
     {
         // ---------- Dependencies ----------
         private readonly AppDbContext _context; // EF Core DbContext for querying users/claims
+        private readonly ClaimEvaluationService _evaluationService;
 
         /// <summary>
         /// Initializes the controller with the application's DbContext.
         /// </summary>
         /// <param name="context">EF Core database context.</param>
-        public CoordinatorController(AppDbContext context)
+        public CoordinatorController(AppDbContext context, ClaimEvaluationService evaluationResult)
         {
             _context = context;
+            _evaluationService = evaluationResult;
         }
 
         /// <summary>
@@ -48,17 +52,14 @@ namespace ST10382638_PROG_POE.Controllers
 
             // Load the coordinator user record to provide name/email in the UI.
             var me = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
-
             if (me == null)
-                return NotFound("Coordinator not found");
+            {
+                // If the user record cannot be found, redirect to login or an error page.
+                return RedirectToAction("Login", "Account");
+            }
 
-            // Local helper to compare status safely (kept for readability;
-            // the actual query below uses a direct lowercase comparison).
-            static bool IsPending(string? s) =>
-                (s ?? "").Trim().Equals("Pending", StringComparison.OrdinalIgnoreCase);
-
-            // Query all Pending claims, including lecturer (and their user) and supporting docs.
-            // Includes are eager-loaded to avoid N+1 roundtrips and to supply the view with full context.
+            // Query for all claims that are currently "Pending" and include the related
+            // lecturer profile + user record so the view has everything it needs to render.
             var pending = await _context.Claim
                 .Include(c => c.LecturerProfile)
                     .ThenInclude(lp => lp.User)
@@ -67,11 +68,18 @@ namespace ST10382638_PROG_POE.Controllers
                 .OrderBy(c => c.SubmittedOn) // show newest first for faster triage
                 .ToListAsync();
 
+            // Run automated evaluation for each pending claim so the Coordinator
+            // can see rule results per item on the dashboard.
+            var evaluations = pending
+                .Select(c => _evaluationService.Evaluate(c))
+                .ToDictionary(r => r.ClaimId, r => r);
+
             // Populate ViewBag with data used by the dashboard view (tiles, lists, headers).
             ViewBag.CoordinatorName = $"{me.FirstName} {me.Surname}";
             ViewBag.PendingCount = pending.Count;
             ViewBag.PendingClaims = pending;
             ViewBag.CoordinatorEmail = me.Email;
+            ViewBag.Evaluations = evaluations;
 
             // Render the default view; the model is provided via ViewBag collections/fields.
             return View();

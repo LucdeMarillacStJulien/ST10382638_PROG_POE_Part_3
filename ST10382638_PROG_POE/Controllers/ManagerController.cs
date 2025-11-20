@@ -12,6 +12,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ST10382638_PROG_POE.Data;
+using ST10382638_PROG_POE.Models;
+using ST10382638_PROG_POE.Service;
 using System.Threading.Tasks;
 
 namespace ST10382638_PROG_POE.Controllers
@@ -27,14 +29,16 @@ namespace ST10382638_PROG_POE.Controllers
     {
         // ---------- Dependencies ----------
         private readonly AppDbContext _context; // EF Core DbContext for users/claims
+        private readonly ClaimEvaluationService _evaluationService;
 
         /// <summary>
         /// Initializes the controller with the application's DbContext.
         /// </summary>
         /// <param name="context">EF Core database context.</param>
-        public ManagerController(AppDbContext context)
+        public ManagerController(AppDbContext context, ClaimEvaluationService evaluationService)
         {
             _context = context;
+            _evaluationService = evaluationService;
         }
 
         /// <summary>
@@ -66,11 +70,16 @@ namespace ST10382638_PROG_POE.Controllers
                 .OrderBy(c => c.SubmittedOn)
                 .ToListAsync();
 
+            var evaluations = verified
+                .Select(c => _evaluationService.Evaluate(c))
+                .ToDictionary(r => r.ClaimId, r => r);
+
             // Fill ViewBag with model data the view expects (header, counts, list).
             ViewBag.ProgramManagerName = $"{me.FirstName} {me.Surname}";
             ViewBag.ProgramManagerEmail = me.Email;
             ViewBag.VerifiedCount = verified.Count;
             ViewBag.VerifiedClaims = verified;
+            ViewBag.Evaluations = evaluations;
 
             // Render the dashboard view (model supplied via ViewBag).
             return View();

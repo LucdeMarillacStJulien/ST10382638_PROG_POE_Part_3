@@ -10,6 +10,7 @@
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using ST10382638_PROG_POE.Data;
 using ST10382638_PROG_POE.Models;
 using ST10382638_PROG_POE.Service;
@@ -31,6 +32,7 @@ namespace ST10382638_PROG_POE.Controllers
         // ---------- Server-side constants/guards ----------
         private static readonly HashSet<string> AllowedExtensions =
             new(StringComparer.OrdinalIgnoreCase) { ".pdf", ".docx", ".xlsx" }; // Allowed file types
+
         private const long MaxFileSize = 10 * 1024 * 1024; // 10 MB soft limit per file
         private const double MinHoursPerClaim = 0.25;      // 15-minute minimum granularity
         private const double MaxHoursPerClaim = 10.0;      // Practical upper bound to catch input mistakes
@@ -38,9 +40,6 @@ namespace ST10382638_PROG_POE.Controllers
         /// <summary>
         /// Initializes the controller with its dependencies.
         /// </summary>
-        /// <param name="context">EF Core database context.</param>
-        /// <param name="config">Application configuration (for crypto settings/keys, etc.).</param>
-        /// <param name="downloadService">Service to construct a decrypted ZIP for a claim.</param>
         public ClaimController(AppDbContext context, IConfiguration config, ClaimDownload downloadService)
         {
             _context = context;
@@ -51,9 +50,8 @@ namespace ST10382638_PROG_POE.Controllers
         /// <summary>
         /// Displays the Create Claim form for a specific LecturerProfile.
         /// </summary>
-        /// <param name="id">LecturerProfileId (required).</param>
-        /// <returns>Claim creation view pre-populated with lecturer and email context.</returns>
-        [HttpGet]
+        /// <param name="id">LecturerProfile primary key.</param>
+        /// <returns>View bound to a new <see cref="Claim"/> instance.</returns>
         public async Task<IActionResult> Create(int? id)
         {
             // Validate route parameter early to avoid null dereferences.
@@ -64,31 +62,38 @@ namespace ST10382638_PROG_POE.Controllers
             var lecturer = await _context.LecturerProfile
                 .Include(lp => lp.User)
                 .FirstOrDefaultAsync(lp => lp.LecturerProfileId == id);
-            if (lecturer == null) return NotFound("Lecturer profile not found.");
+
+            if (lecturer == null)
+                return NotFound("Lecturer profile not found.");
 
             // Provide view context for UI display and downstream postback usage.
             ViewBag.Lecturer = lecturer;
             ViewBag.Email = lecturer.User.Email;
-            Console.WriteLine(lecturer.User.Email);
-            return View();
+
+            // Initialise a new Claim with the selected LecturerProfileId.
+            return View(new Claim
+            {
+                LecturerProfileId = lecturer.LecturerProfileId,
+                RateAtSubmission = lecturer.HourlyRate
+            });
         }
 
         /// <summary>
-        /// Handles Claim submission:
-        /// - Validates hours and file attachments (type/size).
-        /// - Calculates server-side amount, sets default status and timestamp.
-        /// - Encrypts supporting docs directly to disk without storing plaintext.
+        /// Handles submission of a new claim including attached supporting documents.
+        /// - Performs validation on file types and sizes.
+        /// - Validates HoursWorked range.
+        /// - Computes CalculatedAmount and sets Status to "Pending".
         /// - Persists SupportingDoc rows referencing encrypted paths.
         /// </summary>
         /// <param name="claim">Claim payload from the form (server fills computed fields).</param>
         /// <param name="files">Uploaded supporting documents (optional).</param>
-        /// <param name="lecturerEmail">Lecturer email for post-save redirect context.</param>
         /// <returns>On success redirects to Lecturer dashboard; otherwise re-renders form with errors.</returns>
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Claim claim, List<IFormFile> files)
         {
             var currentEmail = User?.Identity?.Name;
+
             // ------------------------------------------------------------
             // 0) PRE-VALIDATION: Files (type + size) and HoursWorked
             //    - Fail fast to give immediate feedback and avoid partial writes.
@@ -101,11 +106,14 @@ namespace ST10382638_PROG_POE.Controllers
                     if (string.IsNullOrWhiteSpace(ext) || !AllowedExtensions.Contains(ext))
                     {
                         // Surface friendly, per-file errors to the UI.
-                        ModelState.AddModelError("files", $"{f.FileName} has an invalid file type. Allowed: .pdf, .docx, .xlsx");
+                        ModelState.AddModelError("files",
+                            $"{f.FileName} has an invalid file type. Allowed: .pdf, .docx, .xlsx");
                     }
+
                     if (f.Length > MaxFileSize)
                     {
-                        ModelState.AddModelError("files", $"{f.FileName} exceeds the {(MaxFileSize / 1024 / 1024)} MB limit.");
+                        ModelState.AddModelError("files",
+                            $"{f.FileName} exceeds the {(MaxFileSize / 1024 / 1024)} MB limit.");
                     }
                 }
             }
@@ -118,37 +126,18 @@ namespace ST10382638_PROG_POE.Controllers
             else
             {
                 if (claim.HoursWorked <= 0)
-                    ModelState.AddModelError(nameof(Claim.HoursWorked), "Hours Worked must be greater than 0.");
-                if (claim.HoursWorked < MinHoursPerClaim)
-                    ModelState.AddModelError(nameof(Claim.HoursWorked), $"Minimum allowed is {MinHoursPerClaim} hours.");
-                if (claim.HoursWorked > MaxHoursPerClaim)
-                    ModelState.AddModelError(nameof(Claim.HoursWorked), $"Hours Worked seems unrealistic (> {MaxHoursPerClaim}). Please check.");
+                    ModelState.AddModelError(nameof(Claim.HoursWorked), "Hours Worked must be greater than zero.");
 
-                // Optional 15-min step enforcement (kept as a doc hint, not enforced by default):
-                // if (Math.Abs((claim.HoursWorked * 4) - Math.Round(claim.HoursWorked * 4)) > 1e-9)
-                //     ModelState.AddModelError(nameof(Claim.HoursWorked), "Use 0.25-hour increments (15 minutes).");
+                if (claim.HoursWorked < MinHoursPerClaim || claim.HoursWorked > MaxHoursPerClaim)
+                {
+                    ModelState.AddModelError(nameof(Claim.HoursWorked),
+                        $"Hours Worked must be between {MinHoursPerClaim} and {MaxHoursPerClaim}.");
+                }
             }
 
-            // ------------------------------------------------------------
-            // 1) Remove server-set properties from validation
-            //    (these are set by the server and should not block ModelState)
-            // ------------------------------------------------------------
-            ModelState.Remove(nameof(Claim.CalculatedAmount));
-            ModelState.Remove(nameof(Claim.Status));
-            ModelState.Remove(nameof(Claim.SubmittedOn));
-            ModelState.Remove(nameof(Claim.SupportingDocs));
-            ModelState.Remove(nameof(Claim.Notes));
-            ModelState.Remove(nameof(Claim.LecturerProfile));
-
-            // ------------------------------------------------------------
-            // 2) Stop early if anything invalid so nothing gets saved
-            //    - Rehydrate minimal view context so the user can correct entries.
-            // ------------------------------------------------------------
             if (!ModelState.IsValid)
             {
-                Console.WriteLine(string.Join(Environment.NewLine,
-                    ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage)));
-
+                // Re-load lecturer for the view when validation fails.
                 var lecturerVm = await _context.LecturerProfile
                     .Include(lp => lp.User)
                     .FirstOrDefaultAsync(lp => lp.LecturerProfileId == claim.LecturerProfileId);
@@ -168,7 +157,7 @@ namespace ST10382638_PROG_POE.Controllers
             claim.CalculatedAmount = claim.HoursWorked * claim.RateAtSubmission;
             claim.Status = "Pending";
             claim.SubmittedOn = DateTime.UtcNow.AddHours(2);
-            Console.WriteLine(claim.SubmittedOn);
+
             _context.Claim.Add(claim);
             await _context.SaveChangesAsync(); // ensures ClaimId for folder path
 
@@ -199,6 +188,7 @@ namespace ST10382638_PROG_POE.Controllers
                                 $"{file?.FileName ?? "(unnamed file)"} has an invalid file type. Allowed: .pdf, .docx, .xlsx");
                             continue;
                         }
+
                         if (file.Length > MaxFileSize)
                         {
                             ModelState.AddModelError(string.Empty,
@@ -233,126 +223,59 @@ namespace ST10382638_PROG_POE.Controllers
                     }
                     catch (Exception ex)
                     {
-                        // Collect per-file error messages to display as warnings after loop.
-                        uploadErrors.Add($"{file?.FileName ?? "(unnamed file)"} failed to upload — {ex.Message}");
+                        uploadErrors.Add($"Failed to store file '{file.FileName}': {ex.Message}");
                     }
                 }
 
-                // If nothing saved, re-render with aggregated errors; do not redirect yet.
-                if (savedCount == 0 && (uploadErrors.Count > 0 || !ModelState.IsValid))
-                {
-                    foreach (var err in uploadErrors) ModelState.AddModelError(string.Empty, err);
-
-                    var lecturerVm2 = await _context.LecturerProfile
-                        .Include(lp => lp.User)
-                        .FirstOrDefaultAsync(lp => lp.LecturerProfileId == claim.LecturerProfileId);
-
-                    ViewBag.Lecturer = lecturerVm2;
-                    ViewBag.Email = !string.IsNullOrWhiteSpace(currentEmail);
-
-                    return View(claim); // don't persist docs or redirect
-                }
-
-                // Commit any SupportingDoc rows created during the loop.
                 await _context.SaveChangesAsync();
 
-                // Surface non-fatal per-file issues as user warnings post-redirect.
                 if (uploadErrors.Count > 0)
+                {
                     TempData["UploadWarnings"] = string.Join(Environment.NewLine, uploadErrors);
+                }
             }
 
-            // ------------------------------------------------------------
-            // 5) Go back to Lecturer dashboard
-            //    - Use lecturerEmail context to land on the correct profile view.
-            // ------------------------------------------------------------
             return RedirectToAction("Index", "Lecturer");
         }
 
-        /// <summary>
-        /// Shows the Lecturer's pending/verified/approved/rejected claims along with
-        /// useful header metrics and a status-ordered table view.
-        /// </summary>
-        /// <param name="email">Lecturer's email (required to locate profile).</param>
-        /// <returns>The pending claims view with summary metrics.</returns>
-        [HttpGet]
+        // =====================================================================
+        // Lecturer claim listing (grouped by status)
+        // =====================================================================
+
         public async Task<IActionResult> Pending()
         {
             var email = User?.Identity?.Name;
 
-            // Basic input validation: email is required to locate the correct profile.
             if (string.IsNullOrWhiteSpace(email))
                 return BadRequest("Lecturer email is required.");
 
-            // Load profile with associated User and Claims for aggregation and display.
             var profile = await _context.LecturerProfile
                 .Include(lp => lp.User)
-                .Include(lp => lp.Claim) // collection of claims for this lecturer
+                .Include(lp => lp.Claim)
                 .FirstOrDefaultAsync(lp => lp.User.Email == email);
 
             if (profile == null)
                 return NotFound("Lecturer profile not found.");
 
-            // Local helper to normalize/compare string statuses safely.
-            static bool IsStatus(string? s, string target) =>
-                (s ?? "").Trim().Equals(target, StringComparison.OrdinalIgnoreCase);
+            bool IsStatus(string? value, string target) =>
+                string.Equals(value?.Trim(), target, StringComparison.OrdinalIgnoreCase);
 
-            var claimsAll = (profile.Claim ?? new List<Claim>()).ToList();
+            var claimsAll = profile.Claim?.ToList() ?? new List<Claim>();
 
-            // ---- Header metrics (APPROVED ONLY) ----
-            var approvedClaims = claimsAll.Where(c => IsStatus(c.Status, "Approved")).ToList();
-
-            // Count of pending (for a tile chip)
             ViewBag.TotalPending = claimsAll.Count(c => IsStatus(c.Status, "Pending"));
-
-            // Global totals across all claims (Hours and Amount)
-            ViewBag.TotalHoursAll = claimsAll.Sum(c => c.HoursWorked);
-            ViewBag.TotalAmountAll = claimsAll.Sum(c =>
-            {
-                var hasStored = c.CalculatedAmount != 0;
-                var storedAmt = Convert.ToDouble(c.CalculatedAmount);
-                var computed = c.HoursWorked * c.RateAtSubmission;
-                return hasStored ? storedAmt : computed;
-            });
-
-            // Totals for APPROVED ONLY (top KPI cards)
-            ViewBag.TotalHours = approvedClaims.Sum(c => c.HoursWorked);
-            ViewBag.TotalAmount = approvedClaims.Sum(c =>
-            {
-                var hasStored = c.CalculatedAmount != 0;
-                var storedAmt = Convert.ToDouble(c.CalculatedAmount);
-                var computed = c.HoursWorked * c.RateAtSubmission;
-                return hasStored ? storedAmt : computed;
-            });
-
-            // ---- Optional: per-status counts for UI filters/tabs ----
             ViewBag.PendingCountAll = claimsAll.Count(c => IsStatus(c.Status, "Pending"));
-            ViewBag.VerifiedCountAll = claimsAll.Count(c => IsStatus(c.Status, "Verified"));
-            ViewBag.ApprovedCountAll = claimsAll.Count(c => IsStatus(c.Status, "Approved"));
-            ViewBag.RejectedCountAll = claimsAll.Count(c => IsStatus(c.Status, "Rejected"));
-
-            // ---- Table rows: ALL claims, ordered by Status then date ----
-            // Custom status sort order makes the list more actionable in the UI.
-            int StatusOrder(string? s) =>
-                IsStatus(s, "Pending") ? 0 :
-                IsStatus(s, "Verified") ? 1 :
-                IsStatus(s, "Approved") ? 2 :
-                IsStatus(s, "Rejected") ? 3 : 9;
-
-            ViewBag.AllClaims = claimsAll
-                .OrderByDescending(c => c.SubmittedOn)
-                .ToList();
-
-            // Provide email back to the view for "Back to Dashboard" navigation.
-            ViewBag.LecturerEmail = profile.User.Email;
 
             return View(profile);
         }
+
+        // =====================================================================
+        // Coordinator and Manager workflow actions
+        // =====================================================================
 
         /// <summary>
         /// Coordinator action: mark a claim as Verified.
         /// </summary>
         /// <param name="id">Claim identifier.</param>
-        /// <param name="email">Coordinator's email used for redirect context.</param>
         /// <returns>Redirect to Coordinator dashboard.</returns>
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -362,6 +285,10 @@ namespace ST10382638_PROG_POE.Controllers
             var claim = await _context.Claim.FindAsync(id);
             if (claim == null)
                 return NotFound("Claim not found.");
+
+            // Guardrail: only PENDING claims may be verified at Coordinator stage.
+            if (!string.Equals(claim.Status?.Trim(), "Pending", StringComparison.OrdinalIgnoreCase))
+                return BadRequest("Only pending claims can be verified by the Coordinator.");
 
             // Mark claim as verified to move it forward in the workflow.
             claim.Status = "Verified";
@@ -374,7 +301,6 @@ namespace ST10382638_PROG_POE.Controllers
         /// Coordinator action: mark a claim as Rejected.
         /// </summary>
         /// <param name="id">Claim identifier.</param>
-        /// <param name="email">Coordinator's email used for redirect context.</param>
         /// <returns>Redirect to Coordinator dashboard.</returns>
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -383,6 +309,10 @@ namespace ST10382638_PROG_POE.Controllers
             var claim = await _context.Claim.FindAsync(id);
             if (claim == null)
                 return NotFound("Claim not found.");
+
+            // Guardrail: only PENDING claims may be rejected at Coordinator stage.
+            if (!string.Equals(claim.Status?.Trim(), "Pending", StringComparison.OrdinalIgnoreCase))
+                return BadRequest("Only pending claims can be rejected by the Coordinator.");
 
             // Rejection at Coordinator stage (e.g., insufficient documentation).
             claim.Status = "Rejected";
@@ -395,14 +325,14 @@ namespace ST10382638_PROG_POE.Controllers
         /// Program Manager action: approve a previously Verified claim.
         /// </summary>
         /// <param name="id">Claim identifier.</param>
-        /// <param name="email">Program Manager email (optional; read from form if missing).</param>
         /// <returns>Redirect to Manager dashboard.</returns>
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Approve(int id)
         {
             var claim = await _context.Claim.FindAsync(id);
-            if (claim == null) return NotFound("Claim not found.");
+            if (claim == null)
+                return NotFound("Claim not found.");
 
             // Guardrail: Only VERIFIED claims can be approved by the Program Manager.
             if (!string.Equals(claim.Status?.Trim(), "Verified", StringComparison.OrdinalIgnoreCase))
@@ -418,15 +348,14 @@ namespace ST10382638_PROG_POE.Controllers
         /// Program Manager action: reject a previously Verified claim.
         /// </summary>
         /// <param name="id">Claim identifier.</param>
-        /// <param name="email">Program Manager email (optional; read from form if missing).</param>
         /// <returns>Redirect to Manager dashboard.</returns>
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ManagerReject(int id)
         {
-
             var claim = await _context.Claim.FindAsync(id);
-            if (claim == null) return NotFound("Claim not found.");
+            if (claim == null)
+                return NotFound("Claim not found.");
 
             // Guardrail: Only VERIFIED claims can be rejected by the Program Manager.
             if (!string.Equals(claim.Status?.Trim(), "Verified", StringComparison.OrdinalIgnoreCase))
@@ -438,12 +367,10 @@ namespace ST10382638_PROG_POE.Controllers
             return RedirectToAction("Index", "Manager");
         }
 
-        /// <summary>
-        /// Builds a decrypted ZIP (in-memory stream) of a claim's encrypted supporting
-        /// documents using <see cref="ClaimDownload"/> and returns it as a file download.
-        /// </summary>
-        /// <param name="claimId">The claim whose documents should be downloaded.</param>
-        /// <returns>ZIP file result, or 404 if no documents are available.</returns>
+        // =====================================================================
+        // Supporting document download for Coordinator/Manager/HR
+        // =====================================================================
+
         [HttpGet]
         public async Task<IActionResult> DownloadClaimFolder(int claimId)
         {
@@ -455,6 +382,5 @@ namespace ST10382638_PROG_POE.Controllers
             var (zipStream, fileName) = result.Value;
             return File(zipStream, "application/zip", fileName);
         }
-
     }
 }
