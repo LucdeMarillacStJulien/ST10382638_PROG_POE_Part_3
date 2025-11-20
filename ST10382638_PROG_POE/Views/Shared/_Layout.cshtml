@@ -18,8 +18,8 @@
             <div class="container-fluid">
                 @{
                     // Default if not logged in or no matching role
-                    var brandController = "Home";
-                    var brandAction = "Index";
+                    var brandController = "Account";
+                    var brandAction = "login";
 
                     if (User.Identity.IsAuthenticated)
                     {

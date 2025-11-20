@@ -14,6 +14,7 @@ using Microsoft.Extensions.Configuration;
 using ST10382638_PROG_POE.Data;
 using ST10382638_PROG_POE.Models;
 using ST10382638_PROG_POE.Service;
+using System;
 
 namespace ST10382638_PROG_POE.Controllers
 {
@@ -52,73 +53,77 @@ namespace ST10382638_PROG_POE.Controllers
         /// </summary>
         /// <param name="id">LecturerProfile primary key.</param>
         /// <returns>View bound to a new <see cref="Claim"/> instance.</returns>
+        // GET: Claim/Create
         public async Task<IActionResult> Create(int? id)
         {
-            // Validate route parameter early to avoid null dereferences.
             if (id == null)
+            {
                 return BadRequest("Lecturer profile id is required.");
+            }
 
-            // Eager-load User for email; fail fast if profile not found.
+            // Load the lecturer profile with the linked user so we have the email and rate
             var lecturer = await _context.LecturerProfile
                 .Include(lp => lp.User)
                 .FirstOrDefaultAsync(lp => lp.LecturerProfileId == id);
 
             if (lecturer == null)
+            {
                 return NotFound("Lecturer profile not found.");
+            }
 
-            // Provide view context for UI display and downstream postback usage.
+            // Used by the view to show lecturer info and keep email context
             ViewBag.Lecturer = lecturer;
-            ViewBag.Email = lecturer.User.Email;
+            ViewBag.Email = lecturer.User?.Email ?? string.Empty;
 
-            // Initialise a new Claim with the selected LecturerProfileId.
-            return View(new Claim
+            // Pre-populate LecturerProfileId and RateAtSubmission
+            var model = new Claim
             {
                 LecturerProfileId = lecturer.LecturerProfileId,
                 RateAtSubmission = lecturer.HourlyRate
-            });
+            };
+
+            return View(model);
         }
 
-        /// <summary>
-        /// Handles submission of a new claim including attached supporting documents.
-        /// - Performs validation on file types and sizes.
-        /// - Validates HoursWorked range.
-        /// - Computes CalculatedAmount and sets Status to "Pending".
-        /// - Persists SupportingDoc rows referencing encrypted paths.
-        /// </summary>
-        /// <param name="claim">Claim payload from the form (server fills computed fields).</param>
-        /// <param name="files">Uploaded supporting documents (optional).</param>
-        /// <returns>On success redirects to Lecturer dashboard; otherwise re-renders form with errors.</returns>
+        // POST: Claim/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Claim claim, List<IFormFile> files)
         {
             var currentEmail = User?.Identity?.Name;
 
-            // ------------------------------------------------------------
-            // 0) PRE-VALIDATION: Files (type + size) and HoursWorked
-            //    - Fail fast to give immediate feedback and avoid partial writes.
-            // ------------------------------------------------------------
+            // -------------------------
+            // 1) Server-side validation
+            // -------------------------
+
+            // File validation (type + size)
             if (files != null && files.Count > 0)
             {
+                var allowedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".png", ".jpg", ".jpeg"
+        };
+                const long maxFileSize = 10 * 1024 * 1024; // 10 MB
+
                 foreach (var f in files.Where(x => x != null && x.Length > 0))
                 {
                     var ext = Path.GetExtension((f.FileName ?? string.Empty).Trim());
-                    if (string.IsNullOrWhiteSpace(ext) || !AllowedExtensions.Contains(ext))
+
+                    if (string.IsNullOrWhiteSpace(ext) || !allowedExtensions.Contains(ext))
                     {
-                        // Surface friendly, per-file errors to the UI.
                         ModelState.AddModelError("files",
-                            $"{f.FileName} has an invalid file type. Allowed: .pdf, .docx, .xlsx");
+                            $"{f.FileName} has an invalid file type. Allowed: .pdf, .doc(x), .xls(x), .png, .jpg, .jpeg");
                     }
 
-                    if (f.Length > MaxFileSize)
+                    if (f.Length > maxFileSize)
                     {
                         ModelState.AddModelError("files",
-                            $"{f.FileName} exceeds the {(MaxFileSize / 1024 / 1024)} MB limit.");
+                            $"{f.FileName} exceeds the {(maxFileSize / 1024 / 1024)} MB limit.");
                     }
                 }
             }
 
-            // Server-side validation for HoursWorked to guard business rules and data integrity.
+            // HoursWorked validation (matches your business rules)
             if (double.IsNaN(claim.HoursWorked) || double.IsInfinity(claim.HoursWorked))
             {
                 ModelState.AddModelError(nameof(Claim.HoursWorked), "Hours Worked value is invalid.");
@@ -126,47 +131,60 @@ namespace ST10382638_PROG_POE.Controllers
             else
             {
                 if (claim.HoursWorked <= 0)
+                {
                     ModelState.AddModelError(nameof(Claim.HoursWorked), "Hours Worked must be greater than zero.");
+                }
 
-                if (claim.HoursWorked < MinHoursPerClaim || claim.HoursWorked > MaxHoursPerClaim)
+                if (claim.HoursWorked < 0.25 || claim.HoursWorked > 10.0)
                 {
                     ModelState.AddModelError(nameof(Claim.HoursWorked),
-                        $"Hours Worked must be between {MinHoursPerClaim} and {MaxHoursPerClaim}.");
+                        "Hours Worked must be between 0.25 and 10.0.");
                 }
             }
 
+            // ------------------------------------------------------------
+            // FIX: remove server-side-only properties from ModelState
+            // ------------------------------------------------------------
+            // These are set by the controller (not the user) and some are marked [Required]
+            // on the Claim model. If we don't remove them, ModelState.IsValid will fail
+            // before we get a chance to populate them.
+            ModelState.Remove(nameof(Claim.CalculatedAmount));
+            ModelState.Remove(nameof(Claim.Status));
+            ModelState.Remove(nameof(Claim.SubmittedOn));
+            ModelState.Remove(nameof(Claim.SupportingDocs));
+            ModelState.Remove(nameof(Claim.LecturerProfile));
+
             if (!ModelState.IsValid)
             {
-                // Re-load lecturer for the view when validation fails.
+                // Reload lecturer so the view can re-render correctly
                 var lecturerVm = await _context.LecturerProfile
                     .Include(lp => lp.User)
                     .FirstOrDefaultAsync(lp => lp.LecturerProfileId == claim.LecturerProfileId);
 
                 ViewBag.Lecturer = lecturerVm;
-                ViewBag.Email = !string.IsNullOrWhiteSpace(currentEmail);
+                ViewBag.Email = !string.IsNullOrWhiteSpace(currentEmail)
+                    ? currentEmail
+                    : lecturerVm?.User?.Email ?? string.Empty;
 
-                return View(claim); // nothing saved
+                return View(claim);
             }
 
-            // ------------------------------------------------------------
-            // 3) Compute server-side fields & save Claim (to get ClaimId)
-            //    - CalculatedAmount derived from HoursWorked * RateAtSubmission.
-            //    - Status initialized to "Pending".
-            //    - SubmittedOn recorded in SAST (UTC+2) to align with local time.
-            // ------------------------------------------------------------
+            // ---------------------------------------
+            // 2) Compute server-side fields and save
+            // ---------------------------------------
+
             claim.CalculatedAmount = claim.HoursWorked * claim.RateAtSubmission;
             claim.Status = "Pending";
+            // Store as UTC+2 (SAST) to match the rest of your project
             claim.SubmittedOn = DateTime.UtcNow.AddHours(2);
 
             _context.Claim.Add(claim);
-            await _context.SaveChangesAsync(); // ensures ClaimId for folder path
+            await _context.SaveChangesAsync(); // we now have ClaimId
 
-            // ------------------------------------------------------------
-            // 4) Save files (encrypted-only) into Claim's folder
-            //    Folder: <solution>/App_Data/ClaimDocs/{ClaimId}/
-            //    - Streams are encrypted directly; plaintext is never persisted to disk.
-            //    - A SupportingDoc row is created per file with path to the .enc payload.
-            // ------------------------------------------------------------
+            // ---------------------------------------
+            // 3) Encrypt and save uploaded documents
+            // ---------------------------------------
+
             if (files != null && files.Count > 0)
             {
                 var solutionRoot = Directory.GetCurrentDirectory();
@@ -174,52 +192,33 @@ namespace ST10382638_PROG_POE.Controllers
                 Directory.CreateDirectory(claimFolder);
 
                 var uploadErrors = new List<string>();
-                var savedCount = 0;
 
                 foreach (var file in files.Where(f => f != null && f.Length > 0))
                 {
                     try
                     {
-                        // Double-guard validation to keep loop robust against mixed batches.
-                        var ext = Path.GetExtension((file.FileName ?? string.Empty).Trim());
-                        if (string.IsNullOrWhiteSpace(ext) || !AllowedExtensions.Contains(ext))
-                        {
-                            ModelState.AddModelError(string.Empty,
-                                $"{file?.FileName ?? "(unnamed file)"} has an invalid file type. Allowed: .pdf, .docx, .xlsx");
-                            continue;
-                        }
-
-                        if (file.Length > MaxFileSize)
-                        {
-                            ModelState.AddModelError(string.Empty,
-                                $"{file.FileName} exceeds the {(MaxFileSize / (1024 * 1024))} MB limit.");
-                            continue;
-                        }
-
-                        // Generate a unique encrypted filename while retaining the original name for display.
                         var originalName = Path.GetFileName(file.FileName);
                         var safeName = $"{Guid.NewGuid()}_{originalName}";
                         var encFileName = safeName + ".enc";
                         var encPath = Path.Combine(claimFolder, encFileName);
 
-                        // Encrypt directly from the upload stream to the .enc file (no temp plaintext).
+                        // Encrypt directly from upload stream to disk
                         using (var input = file.OpenReadStream())
                         {
                             await Encryption.EncryptStreamAsync(input, encPath, _config);
                         }
 
-                        // Persist a SupportingDoc record that points to the encrypted relative path.
-                        var relativePath = Path.Combine("App_Data", "ClaimDocs", claim.ClaimId.ToString(), encFileName);
+                        // Store relative path to encrypted file
+                        var relativePath = Path.Combine("App_Data", "ClaimDocs",
+                            claim.ClaimId.ToString(), encFileName);
 
                         _context.SupportingDoc.Add(new SupportingDoc
                         {
                             ClaimId = claim.ClaimId,
                             FileName = originalName,
-                            FileUrl = relativePath,        // points to .enc
+                            FileUrl = relativePath,
                             FileType = file.ContentType
                         });
-
-                        savedCount++;
                     }
                     catch (Exception ex)
                     {
@@ -235,11 +234,16 @@ namespace ST10382638_PROG_POE.Controllers
                 }
             }
 
+            // ---------------------------------------
+            // 4) Redirect back to lecturer dashboard
+            // ---------------------------------------
+
             return RedirectToAction("Index", "Lecturer");
         }
 
+
         // =====================================================================
-        // Lecturer claim listing (grouped by status)
+        // Lecturer claim listing (grouped by status) – PENDING VIEW
         // =====================================================================
 
         public async Task<IActionResult> Pending()
@@ -249,24 +253,71 @@ namespace ST10382638_PROG_POE.Controllers
             if (string.IsNullOrWhiteSpace(email))
                 return BadRequest("Lecturer email is required.");
 
+            // Load profile with associated User and Claims for aggregation and display.
             var profile = await _context.LecturerProfile
                 .Include(lp => lp.User)
-                .Include(lp => lp.Claim)
+                .Include(lp => lp.Claim) // collection of claims for this lecturer
                 .FirstOrDefaultAsync(lp => lp.User.Email == email);
 
             if (profile == null)
                 return NotFound("Lecturer profile not found.");
 
-            bool IsStatus(string? value, string target) =>
-                string.Equals(value?.Trim(), target, StringComparison.OrdinalIgnoreCase);
+            // Local helper to normalize/compare string statuses safely.
+            static bool IsStatus(string? s, string target) =>
+                (s ?? "").Trim().Equals(target, StringComparison.OrdinalIgnoreCase);
 
-            var claimsAll = profile.Claim?.ToList() ?? new List<Claim>();
+            var claimsAll = (profile.Claim ?? new List<Claim>()).ToList();
 
+            // ---- Header metrics (APPROVED ONLY) ----
+            var approvedClaims = claimsAll.Where(c => IsStatus(c.Status, "Approved")).ToList();
+
+            // Count of pending (for a tile chip)
             ViewBag.TotalPending = claimsAll.Count(c => IsStatus(c.Status, "Pending"));
+
+            // Global totals across all claims (Hours and Amount)
+            ViewBag.TotalHoursAll = claimsAll.Sum(c => c.HoursWorked);
+            ViewBag.TotalAmountAll = claimsAll.Sum(c =>
+            {
+                var hasStored = c.CalculatedAmount != 0;
+                var storedAmt = Convert.ToDouble(c.CalculatedAmount);
+                var computed = c.HoursWorked * c.RateAtSubmission;
+                return hasStored ? storedAmt : computed;
+            });
+
+            // Totals for APPROVED ONLY (top KPI cards)
+            ViewBag.TotalHours = approvedClaims.Sum(c => c.HoursWorked);
+            ViewBag.TotalAmount = approvedClaims.Sum(c =>
+            {
+                var hasStored = c.CalculatedAmount != 0;
+                var storedAmt = Convert.ToDouble(c.CalculatedAmount);
+                var computed = c.HoursWorked * c.RateAtSubmission;
+                return hasStored ? storedAmt : computed;
+            });
+
+            // ---- Optional: per-status counts for UI filters/tabs ----
             ViewBag.PendingCountAll = claimsAll.Count(c => IsStatus(c.Status, "Pending"));
+            ViewBag.VerifiedCountAll = claimsAll.Count(c => IsStatus(c.Status, "Verified"));
+            ViewBag.ApprovedCountAll = claimsAll.Count(c => IsStatus(c.Status, "Approved"));
+            ViewBag.RejectedCountAll = claimsAll.Count(c => IsStatus(c.Status, "Rejected"));
+
+            // ---- Table rows: ALL claims, ordered by Status then date ----
+            // Custom status sort order makes the list more actionable in the UI.
+            int StatusOrder(string? s) =>
+                IsStatus(s, "Pending") ? 0 :
+                IsStatus(s, "Verified") ? 1 :
+                IsStatus(s, "Approved") ? 2 :
+                IsStatus(s, "Rejected") ? 3 : 9;
+
+            ViewBag.AllClaims = claimsAll
+                .OrderByDescending(c => c.SubmittedOn)
+                .ToList();
+
+            // Provide email back to the view for "Back to Dashboard" navigation.
+            ViewBag.LecturerEmail = profile.User.Email;
 
             return View(profile);
         }
+
 
         // =====================================================================
         // Coordinator and Manager workflow actions
