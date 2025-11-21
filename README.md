@@ -236,9 +236,3 @@ URL: https://chatgpt.com/c/68f2c6ad-b79c-832c-97a1-59b6f53334a9
 
 C# Reference and Tutorials – W3Schools
 URL: https://www.w3schools.com/cs/index.php
-
-Chart.js JavaScript charting library (CDN)
-URL: https://cdn.jsdelivr.net/npm/chart.js
-
-YouTube – CMCS / Part 3 demo video (linked in README)
-URL: https://youtu.be/kdibIv_qLhs
