@@ -55,9 +55,6 @@
                 <dt class="col-4">User Id</dt>
                 <dd class="col-8">@Model.Id</dd>
 
-                <dt class="col-4">User Name</dt>
-                <dd class="col-8">@Model.UserName</dd>
-
                 <dt class="col-4">First Name</dt>
                 <dd class="col-8">@Model.FirstName</dd>
 
@@ -116,11 +113,6 @@
                     @(lecturerProfile.IsAvailable ? "Available" : "Not Available")
                 </span>
             </div>
-
-            <div class="col-md-4">
-                <div class="text-muted small">Linked User Id</div>
-                <div>@lecturerProfile.UserId</div>
-            </div>
         </div>
     </div>
 
@@ -130,6 +122,12 @@
         <hr class="hr-neon" />
 
         @* Period invoice (day / week / month) *@
+        @if (TempData["PeriodInvoiceError"] is string periodError && !string.IsNullOrWhiteSpace(periodError))
+        {
+            <div class="alert alert-warning mb-3">
+                @periodError
+            </div>
+        }
         <form asp-action="DownloadInvoiceByPeriod"
               method="post"
               class="row g-3 align-items-end hover-only-inputs">

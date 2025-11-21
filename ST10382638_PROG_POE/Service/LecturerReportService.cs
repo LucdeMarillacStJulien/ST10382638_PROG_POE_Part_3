@@ -178,9 +178,7 @@ namespace ST10382638_PROG_POE.Service
 
             foreach (var c in claims)
             {
-                totalHours += c.HoursWorked;
-                totalAmount += c.CalculatedAmount;
-
+                // Notes (escaped for CSV)
                 var notes = (c.Notes ?? string.Empty).Replace("\"", "\"\"");
                 if (notes.Contains(',')) notes = $"\"{notes}\"";
 
@@ -192,6 +190,13 @@ namespace ST10382638_PROG_POE.Service
                     $"{c.CalculatedAmount.ToString("F2", csvCulture)}," +
                     $"{c.Status}," +
                     $"{notes}");
+
+                // IMPORTANT: Totals must only include APPROVED invoices
+                if (string.Equals(c.Status, "Approved", StringComparison.OrdinalIgnoreCase))
+                {
+                    totalHours += c.HoursWorked;
+                    totalAmount += c.CalculatedAmount;
+                }
             }
 
             sb.AppendLine();

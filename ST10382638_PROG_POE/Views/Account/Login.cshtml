@@ -24,7 +24,7 @@ References:
         <div class="card">
             <div class="card-body">
                 @* Displays validation summary for model-level errors *@
-                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                <div asp-validation-summary="ModelOnly" class="login-error-box"></div>
 
                 @* Login form posts to Account/Login with anti-forgery protection *@
                 <form asp-action="Login" method="post" class="hover-only-inputs">

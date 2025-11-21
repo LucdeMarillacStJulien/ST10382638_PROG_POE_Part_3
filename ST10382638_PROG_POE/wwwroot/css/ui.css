@@ -515,3 +515,53 @@ input[type="file"] {
 
 
 
+/* Date picker styling only inside forms that use .hover-only-inputs (HR period invoice) */
+.hover-only-inputs input[type="date"] {
+    color: #ffffff; /* make the typed date text white */
+    background: rgba(20, 24, 31, 0.9); /* dark background to match your theme */
+    border: 1px solid var(--glass-border); /* same border as other inputs */
+}
+
+    /* Make the inner text of the date (day/month/year) white in Chromium browsers */
+    .hover-only-inputs input[type="date"]::-webkit-datetime-edit,
+    .hover-only-inputs input[type="date"]::-webkit-datetime-edit-text,
+    .hover-only-inputs input[type="date"]::-webkit-datetime-edit-year-field,
+    .hover-only-inputs input[type="date"]::-webkit-datetime-edit-month-field,
+    .hover-only-inputs input[type="date"]::-webkit-datetime-edit-day-field {
+        color: #ffffff;
+    }
+
+    /* Make the calendar icon visible on dark background (Chrome / Edge) */
+    .hover-only-inputs input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: invert(1);
+    }
+
+/* Neon-themed Login Error Box */
+.login-error-box {
+    background: rgba(255, 51, 102, 0.18); /* soft red glass background */
+    border: 1px solid rgba(255, 51, 102, 0.55); /* neon border */
+    color: #ff4f6d; /* bright neon red text */
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    box-shadow: 0 0 14px rgba(255, 51, 102, 0.35);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+}
+
+    .login-error-box ul {
+        margin: 0;
+        padding-left: 20px;
+    }
+    /* Remove list bullets from login validation errors */
+    .login-error-box ul {
+        list-style: none; /* removes bullet */
+        padding-left: 0; /* aligns text to the left edge */
+        margin: 0;
+    }
+
+    .login-error-box li {
+        margin: 0; /* no spacing added by list items */
+    }

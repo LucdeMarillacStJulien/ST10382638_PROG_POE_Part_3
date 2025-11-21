@@ -78,7 +78,13 @@
             <div class="col-md-6">
                 <label class="form-label">Hourly Rate (Lecturer only)</label>
                 @* Optional; only used when role == Lecturer to seed LecturerProfile.HourlyRate *@
-                <input name="HourlyRate" type="number" step="0.01" class="input-clean" placeholder="e.g. 450.00" />
+                <input name="HourlyRate"
+                       type="number"
+                       step="0.01"
+                       min="10"
+                       max="750"
+                       class="input-clean"
+                       placeholder="e.g. 450.00" />
             </div>
         </div>
 

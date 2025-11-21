@@ -32,6 +32,7 @@ namespace ST10382638_PROG_POE.Models
         /// Used as the basis for calculating claim amounts.
         /// </summary>
         [Required]
+        [Range(10, 750, ErrorMessage = "Hourly rate must be between 0 and 750.")]
         public double HourlyRate { get; set; }
 
         /// <summary>

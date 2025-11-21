@@ -79,6 +79,11 @@ namespace ST10382638_PROG_POE.Controllers
         [HttpPost]
         public async Task<IActionResult> Create(ApplicationUser input, string role, decimal? HourlyRate)
         {
+            if(HourlyRate.HasValue && HourlyRate > 750)
+            {
+                ModelState.AddModelError("HourlyRate", "Hourly rate cannot exceed 750.");
+            }
+
             if (!ModelState.IsValid)
                 return View(input);
 
@@ -153,17 +158,18 @@ namespace ST10382638_PROG_POE.Controllers
         // POST: HR/Edit
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(
-            ApplicationUser input,
-            string? NewPassword,
-            string? ConfirmPassword,
-            decimal? HourlyRate)
+        public async Task<IActionResult> Edit(ApplicationUser input, string? NewPassword, string? ConfirmPassword, decimal? HourlyRate)
         {
             if (string.IsNullOrWhiteSpace(input?.Id))
                 return NotFound();
 
             var user = await _userManager.FindByIdAsync(input.Id);
             if (user == null) return NotFound();
+
+            if(HourlyRate.HasValue && HourlyRate > 750)
+            {
+                ModelState.AddModelError("HourlyRate", "Hourly rate cannot exceed 750.");
+            }
 
             if (!ModelState.IsValid)
             {
@@ -313,8 +319,12 @@ namespace ST10382638_PROG_POE.Controllers
                         .OrderByDescending(c => c.SubmittedOn)
                         .ToList();
 
-                    totalHoursAll = claims.Sum(c => c.HoursWorked);
-                    totalAmountAll = claims.Sum(c => c.CalculatedAmount);
+                    var approvedClaims = claims
+                        .Where(c => string.Equals(c.Status, "Approved", StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+
+                    totalHoursAll = approvedClaims.Sum(c => c.HoursWorked);
+                    totalAmountAll = approvedClaims.Sum(c => c.CalculatedAmount);
                 }
             }
 
@@ -350,7 +360,12 @@ namespace ST10382638_PROG_POE.Controllers
         {
             var result = await _invoiceReport.BuildPeriodInvoiceAsync(id, period, referenceDate);
             if (result == null)
-                return NotFound("No claims found for the selected period.");
+            {
+                // TempData survives a redirect and can be read once in the next request
+                TempData["PeriodInvoiceError"] = "No invoices found for the selected period.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
 
             return File(result.Value.Content, "text/csv", result.Value.FileName);
         }
