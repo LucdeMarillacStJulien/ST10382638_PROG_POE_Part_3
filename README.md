@@ -232,7 +232,7 @@ Error handling highlights:
 ## Reference list from your POE code
 
 Project outline / instructions (ChatGPT conversation)
-URL: https://chatgpt.com/c/68f2c6ad-b79c-832c-97a1-59b6f53334a9
+URL: https://chatgpt.com/c/691e5672-00c8-8328-b4da-a2c0b7ea1c63
 
 C# Reference and Tutorials – W3Schools
 URL: https://www.w3schools.com/cs/index.php
