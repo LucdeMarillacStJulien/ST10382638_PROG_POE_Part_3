@@ -229,12 +229,10 @@ Error handling highlights:
 
 ---
 
-## Repository Contents (for ARC Submission)
-This repository contains the following required artefacts for Part 3:
-- ST10382638_PROG_POE/ — ASP.NET Core MVC solution and source code.
-- Test.ST10382638_PROG_POE/ — MSTest unit test project.
-- README.md — This documentation, updated for Part 3 automation and lecturer feedback.
-- PROG6212_Part3_Presentation.pptx — PowerPoint presentation showcasing:
-  - Updates from Part 2 → Part 3.
-  - Key automated features and code screenshots.
-- Final Part 3 YouTube demo link (unlisted) in the section below.
+## Reference list from your POE code
+
+Project outline / instructions (ChatGPT conversation)
+URL: https://chatgpt.com/c/691e5672-00c8-8328-b4da-a2c0b7ea1c63
+
+C# Reference and Tutorials – W3Schools
+URL: https://www.w3schools.com/cs/index.php
