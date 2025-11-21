@@ -18,29 +18,35 @@ using System;
 
 namespace ST10382638_PROG_POE.Controllers
 {
-    // Handles claim creation, validation, encrypted file uploads and status changes
-    // across Lecturer → Coordinator → Manager workflow, plus document download.
+    // Controller responsible for the entire claim lifecycle:
+    //  - Lecturers: create and view their own claims (+ upload encrypted documents).
+    //  - Coordinators: verify or reject pending claims.
+    //  - Program Managers: approve or reject verified claims.
+    //  - Staff (Coordinator/Manager/HR): download decrypted supporting documents as a ZIP.
     public class ClaimController : Controller
     {
         // -------------------------------------------------------------------------
         // Dependencies
         // -------------------------------------------------------------------------
-        private readonly AppDbContext _context;            // EF Core DbContext for persistence
-        private readonly IConfiguration _config;           // App configuration (used by encryption service)
-        private readonly ClaimDownload _downloadService;   // Service that builds decrypted ZIPs
+        private readonly AppDbContext _context;            // EF Core DbContext for claims, lecturers and documents
+        private readonly IConfiguration _config;           // App configuration (used by encryption routines)
+        private readonly ClaimDownload _downloadService;   // Service that assembles decrypted document ZIPs
 
-        // Server-side validation and guard constants
+        // Server-side validation and guard constants for claim creation
         private static readonly HashSet<string> AllowedExtensions =
-            new(StringComparer.OrdinalIgnoreCase) { ".pdf", ".docx", ".xlsx" }; // Allowed file types
+            new(StringComparer.OrdinalIgnoreCase) { ".pdf", ".docx", ".xlsx" }; // Allowed file types (not directly used in POST)
 
-        private const long MaxFileSize = 10 * 1024 * 1024; // 10 MB soft limit per file
-        private const double MinHoursPerClaim = 0.25;      // 15-minute minimum granularity
-        private const double MaxHoursPerClaim = 10.0;      // Upper bound to catch input mistakes
+        private const long MaxFileSize = 10 * 1024 * 1024; // 10 MB soft limit per file (safeguard against large uploads)
+        private const double MinHoursPerClaim = 0.25;      // 15-minute minimum granularity (discourages tiny/accidental entries)
+        private const double MaxHoursPerClaim = 10.0;      // Upper bound to catch unrealistic input mistakes
 
         // -------------------------------------------------------------------------
         // Constructor
         // -------------------------------------------------------------------------
-        // Injects database context, configuration and claim download service.
+        // PURPOSE: Wire up infrastructure needed for claim handling.
+        //          - AppDbContext: read/write claims, lecturer profiles and supporting documents.
+        //          - IConfiguration: pass configuration values (e.g. encryption keys/IVs) to helper services.
+        //          - ClaimDownload: encapsulates logic to decrypt and bundle supporting docs into a ZIP stream.
         public ClaimController(AppDbContext context, IConfiguration config, ClaimDownload downloadService)
         {
             _context = context;
@@ -51,6 +57,15 @@ namespace ST10382638_PROG_POE.Controllers
         // -------------------------------------------------------------------------
         // Lecturer: display Create Claim form for a specific LecturerProfile
         // -------------------------------------------------------------------------
+        // PURPOSE: Show the claim capture form for a given lecturer.
+        //          - Expects a valid LecturerProfileId (id).
+        //          - Loads the LecturerProfile including the linked user to access:
+        //              * Email (for navigation and display),
+        //              * HourlyRate (used to pre-fill RateAtSubmission).
+        //          - Pre-populates a new Claim model with:
+        //              * LecturerProfileId (foreign key),
+        //              * RateAtSubmission (snapshot of current hourly rate).
+        //          - If id is missing/invalid, returns appropriate HTTP error responses.
         // GET: Claim/Create
         public async Task<IActionResult> Create(int? id)
         {
@@ -58,7 +73,6 @@ namespace ST10382638_PROG_POE.Controllers
             {
                 return BadRequest("Lecturer profile id is required.");
             }
-
 
             // Load the lecturer profile with linked user to access email and hourly rate
             var lecturer = await _context.LecturerProfile
@@ -87,6 +101,26 @@ namespace ST10382638_PROG_POE.Controllers
         // -------------------------------------------------------------------------
         // Lecturer: submit a new claim with supporting documents (encrypted)
         // -------------------------------------------------------------------------
+        // PURPOSE: Process the POST of a new claim from the lecturer.
+        //          High-level flow:
+        //          1) Validate input:
+        //              - Check uploaded file types and sizes.
+        //              - Enforce HoursWorked business rules (range + non-zero).
+        //              - Remove server-only properties from ModelState so they do
+        //                not cause false validation errors.
+        //          2) If validation fails:
+        //              - Reload the lecturer profile.
+        //              - Redisplay the form with validation messages.
+        //          3) If validation passes:
+        //              - Calculate claim.CalculatedAmount (hours * rate).
+        //              - Set Status = "Pending" and SubmittedOn = now (UTC+2).
+        //              - Save claim to database (so ClaimId is generated).
+        //          4) Handle supporting docs:
+        //              - Create a folder per claim under App_Data/ClaimDocs/{ClaimId}.
+        //              - Encrypt each uploaded file to disk using Encryption.EncryptStreamAsync.
+        //              - Record SupportingDoc entries pointing to the encrypted file paths.
+        //              - Store any non-fatal upload errors in TempData for user feedback.
+        //          5) Redirect the lecturer back to their dashboard (Lecturer/Index).
         // POST: Claim/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -97,8 +131,6 @@ namespace ST10382638_PROG_POE.Controllers
             // ---------------------------------------------------------------------
             // 1) Server-side validation
             // ---------------------------------------------------------------------
-
-
 
             // Validate supporting document types and file sizes
             if (files != null && files.Count > 0)
@@ -250,6 +282,17 @@ namespace ST10382638_PROG_POE.Controllers
         // =====================================================================
         // Lecturer claim listing (dashboard-style pending view)
         // =====================================================================
+        // PURPOSE: Display a dashboard-style overview of all claims for the
+        //          currently logged-in lecturer (by email).
+        //          - Looks up the LecturerProfile using the current user’s email.
+        //          - Loads all associated claims for that profile.
+        //          - Calculates:
+        //              * Global totals (hours + amount) across all claims.
+        //              * KPI totals for APPROVED claims only.
+        //              * Per-status counts (Pending/Verified/Approved/Rejected).
+        //          - Sorts claims by SubmittedOn (newest first) for display.
+        //          - Exposes a range of ViewBag values so the view can render
+        //            summary cards, tabs and badges without extra queries.
         public async Task<IActionResult> Pending()
         {
             var email = User?.Identity?.Name;
@@ -326,7 +369,11 @@ namespace ST10382638_PROG_POE.Controllers
         // Coordinator and Manager workflow actions
         // =====================================================================
 
-        // Coordinator: mark a pending claim as Verified
+        // PURPOSE: Coordinator marks a PENDING claim as Verified.
+        //          - Looks up the claim by id.
+        //          - Ensures the claim is currently in "Pending" state.
+        //          - If valid, updates Status → "Verified" and persists the change.
+        //          - Returns the Coordinator back to their Index view.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Verify(int id)
@@ -345,7 +392,11 @@ namespace ST10382638_PROG_POE.Controllers
             return RedirectToAction("Index", "Coordinator");
         }
 
-        // Coordinator: mark a pending claim as Rejected
+        // PURPOSE: Coordinator marks a PENDING claim as Rejected.
+        //          - Looks up the claim by id.
+        //          - Ensures the claim is currently in "Pending" state.
+        //          - If valid, updates Status → "Rejected" and saves the change.
+        //          - Sends the Coordinator back to their dashboard.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Reject(int id)
@@ -364,7 +415,12 @@ namespace ST10382638_PROG_POE.Controllers
             return RedirectToAction("Index", "Coordinator");
         }
 
-        // Program Manager: approve a Verified claim
+        // PURPOSE: Program Manager approves a VERIFIED claim.
+        //          - Finds the claim by id.
+        //          - Ensures it is currently "Verified".
+        //          - If valid, updates Status → "Approved" and saves.
+        //          - Redirects back to the Manager dashboard, where the claim
+        //            will appear as approved for reporting and invoicing.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Approve(int id)
@@ -383,7 +439,11 @@ namespace ST10382638_PROG_POE.Controllers
             return RedirectToAction("Index", "Manager");
         }
 
-        // Program Manager: reject a Verified claim
+        // PURPOSE: Program Manager rejects a VERIFIED claim.
+        //          - Finds the claim by id.
+        //          - Ensures it is in "Verified" state (post-coordinator).
+        //          - If valid, updates Status → "Rejected" and saves.
+        //          - Redirects the Manager back to their Index page.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ManagerReject(int id)
@@ -406,7 +466,13 @@ namespace ST10382638_PROG_POE.Controllers
         // Supporting document download for Coordinator / Manager / HR
         // =====================================================================
 
-        // Build a decrypted ZIP of all supporting documents linked to the claim
+        // PURPOSE: Download all supporting documents for a claim as a single ZIP.
+        //          - Delegates to ClaimDownload.BuildDecryptedZipAsync:
+        //              * Locates all SupportingDoc records for the given claimId.
+        //              * Decrypts each encrypted file on disk into a ZIP archive.
+        //          - If there are no documents, returns a 404 with a message.
+        //          - On success, streams the ZIP file back to the browser with
+        //            content type "application/zip" so staff can review evidence.
         [HttpGet]
         public async Task<IActionResult> DownloadClaimFolder(int claimId)
         {
@@ -420,4 +486,4 @@ namespace ST10382638_PROG_POE.Controllers
         }
     }
 }
-//------------------------------------------...ooo000 END OF FILE 000ooo...------------------------------------------------------//  
+//------------------------------------------...ooo000 END OF FILE 000ooo...------------------------------------------------------//

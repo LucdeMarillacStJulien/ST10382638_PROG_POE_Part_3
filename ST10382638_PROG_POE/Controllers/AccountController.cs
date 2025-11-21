@@ -15,17 +15,24 @@ using ST10382638_PROG_POE.Models;
 
 namespace ST10382638_PROG_POE.Controllers
 {
-    // Allows unauthenticated users to access this controller (used for login)
+    // Controller responsible for handling the Identity-based login experience:
+    //  - Shows the login page for unauthenticated users.
+    //  - Validates credentials using ASP.NET Core Identity.
+    //  - Redirects authenticated users to role-specific dashboards (Lecturer / Coordinator / Manager / HR).
+    //  - Logs users out and shows an Access Denied page when authorization fails.
     [AllowAnonymous]
     public class AccountController : Controller
     {
-        // Declaring Identity services for authentication and user management
-        private readonly SignInManager<ApplicationUser> _signInManager;
-        private readonly UserManager<ApplicationUser> _userManager;
-        private readonly ILogger<AccountController> _logger;
+        // Identity services used to authenticate and manage users
+        private readonly SignInManager<ApplicationUser> _signInManager; // Handles sign-in/out logic
+        private readonly UserManager<ApplicationUser> _userManager;     // Handles user lookups and role retrieval
+        private readonly ILogger<AccountController> _logger;            // Used to log important authentication events
 
         //------------------------------------------------------------------------------------------------------------------------//
-        // Constructor injecting logger, sign-in manager and user manager
+        // PURPOSE: Build an AccountController with all necessary Identity services.
+        //          - ILogger<AccountController>   : for logging login success/failure and logout events.
+        //          - SignInManager<ApplicationUser>: for handling password sign-in and sign-out flows.
+        //          - UserManager<ApplicationUser> : for finding users by email and reading assigned roles.
         public AccountController(ILogger<AccountController> logger, SignInManager<ApplicationUser> signInManager, UserManager<ApplicationUser> userManager)
         {
             _logger = logger;
@@ -34,14 +41,30 @@ namespace ST10382638_PROG_POE.Controllers
         }
 
         //------------------------------------------------------------------------------------------------------------------------//
-        // Display the Login page
+        // PURPOSE: Render the login view so the user can enter email, password and remember-me.
+        //          - No data loading or processing happens here.
+        //          - The view is bound to the Login model which captures the user’s credentials.
         public IActionResult Login()
         {
             return View();
         }
 
         //------------------------------------------------------------------------------------------------------------------------//
-        // Authenticate user credentials and redirect to dashboard based on user role
+        // PURPOSE: Handle the posted login form and authenticate the user.
+        //          Processing steps:
+        //          1) Validate the incoming Login model using ModelState.
+        //          2) Look up the ApplicationUser using the provided email address.
+        //          3) Use SignInManager.PasswordSignInAsync to check the password and sign the user in.
+        //          4) If login succeeds:
+        //              - Read the user’s roles from Identity.
+        //              - Redirect to the correct dashboard based on role:
+        //                  * Lecturer   → Lecturer/Index
+        //                  * Coordinator→ Coordinator/Index
+        //                  * Manager    → Manager/Index
+        //                  * HR         → HR/Index
+        //              - If no known role matches, fall back to Home/Index.
+        //          5) If the account is locked out, show a specific message and log a warning.
+        //          6) For any other failure, show a generic “Invalid login attempt.” message.
         [HttpPost]
         public async Task<IActionResult> Login(Login login)
         {
@@ -106,7 +129,10 @@ namespace ST10382638_PROG_POE.Controllers
         }
 
         //------------------------------------------------------------------------------------------------------------------------//
-        // Logout the authenticated user and return to Login screen
+        // PURPOSE: Log the current user out of the system and send them back to the Login page.
+        //          - Requires the user to be authenticated (Authorize attribute).
+        //          - Calls SignInManager.SignOutAsync() to clear the authentication cookie.
+        //          - Writes a log entry so logout events are traceable.
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize]
@@ -118,7 +144,9 @@ namespace ST10382638_PROG_POE.Controllers
         }
 
         //------------------------------------------------------------------------------------------------------------------------//
-        // Display the Access Denied page when user lacks required permissions
+        // PURPOSE: Display a simple Access Denied screen when a user is authenticated
+        //          but tries to access a resource they do not have permission to view.
+        //          - Typically used together with [Authorize(Roles = "...")] on other controllers.
         [HttpGet]
         public IActionResult AccessDenied()
         {

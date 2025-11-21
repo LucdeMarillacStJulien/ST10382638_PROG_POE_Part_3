@@ -27,7 +27,11 @@ namespace ST10382638_PROG_POE.Controllers
         private readonly LecturerInvoiceReport _invoiceReport;
 
         //------------------------------------------------------------------------------------------------------------------------//
-        // PURPOSE: Constructor that injects Identity managers, database context and invoice report service.
+        // PURPOSE: Set up the HR controller with all required services.
+        //          - UserManager: manage ApplicationUser accounts (create, update, delete, roles, passwords).
+        //          - RoleManager: manage Identity roles such as "Lecturer", "Manager", "HR", etc.
+        //          - AppDbContext: access domain tables (e.g. LecturerProfile, Claim).
+        //          - LecturerInvoiceReport: build CSV “invoice” files for lecturer claims.
         public HRController(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, AppDbContext context, LecturerInvoiceReport invoiceReport)
         {
             _userManager = userManager;
@@ -37,7 +41,10 @@ namespace ST10382638_PROG_POE.Controllers
         }
 
         //------------------------------------------------------------------------------------------------------------------------//
-        // PURPOSE: HR dashboard — lists all system users except HR staff.
+        // PURPOSE: Display the HR dashboard with a list of users that HR can manage.
+        //          - Loads all users from Identity.
+        //          - Filters out users who are in the "HR" role so HR cannot manage themselves.
+        //          - Sends the remaining users to the Index view for display and further actions.
         public async Task<IActionResult> Index()
         {
             var allUsers = await _userManager.Users.ToListAsync();
@@ -53,14 +60,22 @@ namespace ST10382638_PROG_POE.Controllers
         }
 
         //------------------------------------------------------------------------------------------------------------------------//
-        // PURPOSE: Load blank create-user form for HR to add a new system user.
+        // PURPOSE: Show an empty form that allows HR to capture a brand new system user.
+        //          - No data is loaded from the database.
+        //          - The view will bind the input fields to an ApplicationUser model on POST.
         public IActionResult Create()
         {
             return View();
         }
 
         //------------------------------------------------------------------------------------------------------------------------//
-        // PURPOSE: Creates a new ApplicationUser and assigns selected role; if Lecturer, creates LecturerProfile.
+        // PURPOSE: Handle the submission of the create-user form.
+        //          - Validates HourlyRate (if provided) for a lecturer (max 750).
+        //          - Creates a new ApplicationUser with the supplied details and password.
+        //          - Assigns the selected Identity role (e.g. Lecturer, Manager, Coordinator).
+        //          - If the role is "Lecturer" and an HourlyRate is supplied:
+        //              * Creates a linked LecturerProfile with the chosen hourly rate.
+        //          - On success, redirects back to the HR dashboard (Index).
         [HttpPost]
         public async Task<IActionResult> Create(ApplicationUser input, string role, decimal? HourlyRate)
         {
@@ -104,7 +119,11 @@ namespace ST10382638_PROG_POE.Controllers
         }
 
         //------------------------------------------------------------------------------------------------------------------------//
-        // PURPOSE: Loads user details into edit form (plus lecturer profile if role = Lecturer).
+        // PURPOSE: Load an existing user into the edit form so HR can update their details.
+        //          - Validates that the user ID exists.
+        //          - Loads the user from Identity and finds their current role.
+        //          - If the user is a Lecturer, also loads their LecturerProfile (e.g. HourlyRate).
+        //          - Stores role and lecturer profile in ViewBag for the Edit view to use.
         [HttpGet]
         public async Task<IActionResult> Edit(string id)
         {
@@ -129,7 +148,16 @@ namespace ST10382638_PROG_POE.Controllers
         }
 
         //------------------------------------------------------------------------------------------------------------------------//
-        // PURPOSE: Updates user info, optional password change, and lecturer hourly rate when applicable.
+        // PURPOSE: Apply updates submitted from the edit-user form.
+        //          - Validates basic user information and (optionally) the HourlyRate for lecturers.
+        //          - Updates the user’s name and email.
+        //          - If a new password is provided:
+        //              * Confirms the password match.
+        //              * Replaces the existing password using Identity (remove + add).
+        //          - Persists changes to the ApplicationUser in Identity.
+        //          - If the user is a Lecturer and HourlyRate is provided:
+        //              * Creates or updates the LecturerProfile with the new rate.
+        //          - On success, returns to the HR dashboard; otherwise reloads the form with errors.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(ApplicationUser input, string? NewPassword, string? ConfirmPassword, decimal? HourlyRate)
@@ -225,7 +253,11 @@ namespace ST10382638_PROG_POE.Controllers
         }
 
         //------------------------------------------------------------------------------------------------------------------------//
-        // PURPOSE: Loads supporting ViewBag information for Edit view (role + lecturer profile).
+        // PURPOSE: Helper method used by the Edit actions to repopulate ViewBag data.
+        //          - Retrieves the user’s current role.
+        //          - If the user is a Lecturer, loads the matching LecturerProfile.
+        //          - Exposes role and lecturer profile via ViewBag so the Edit view can rebuild
+        //            any UI elements that depend on them (e.g. hourly rate field).
         private async Task PopulateEditViewBags(ApplicationUser user)
         {
             var roles = await _userManager.GetRolesAsync(user);
@@ -241,7 +273,14 @@ namespace ST10382638_PROG_POE.Controllers
         }
 
         //------------------------------------------------------------------------------------------------------------------------//
-        // PURPOSE: Shows full details of a selected user; if Lecturer, also includes claims summary.
+        // PURPOSE: Show a complete overview of a selected user for HR.
+        //          - Loads the ApplicationUser and determines their role.
+        //          - If the user is a Lecturer:
+        //              * Loads the LecturerProfile including all related claims.
+        //              * Orders claims from newest to oldest.
+        //              * Calculates total approved hours and total approved amount.
+        //          - Stores lecturer profile, claims list and totals in ViewBag so the Details
+        //            view can display a full financial and workload summary.
         public async Task<IActionResult> Details(string id)
         {
             if (string.IsNullOrWhiteSpace(id))
@@ -292,7 +331,10 @@ namespace ST10382638_PROG_POE.Controllers
         }
 
         //------------------------------------------------------------------------------------------------------------------------//
-        // PURPOSE: Generates and returns a CSV invoice for a single lecturer claim.
+        // PURPOSE: Allow HR to download a CSV “invoice” for a single lecturer claim.
+        //          - Uses the LecturerInvoiceReport service to build the CSV for the claimId.
+        //          - If no data is found, returns 404 (NotFound) with an explanation.
+        //          - On success, streams the CSV file back to the browser for download.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DownloadClaimInvoice(int claimId)
@@ -305,7 +347,15 @@ namespace ST10382638_PROG_POE.Controllers
         }
 
         //------------------------------------------------------------------------------------------------------------------------//
-        // PURPOSE: Generates and returns a CSV invoice for all claims in a given period (day/week/month).
+        // PURPOSE: Allow HR to download a CSV “invoice” summarising a lecturer’s claims
+        //          for a specific period (e.g. day, week or month).
+        //          - Uses LecturerInvoiceReport.BuildPeriodInvoiceAsync with:
+        //              * id          : lecturer’s user ID.
+        //              * period      : the chosen period type ("day", "week", "month").
+        //              * referenceDate: the date used as the anchor for the calculation.
+        //          - If no invoice data is returned, sets a TempData error message and
+        //            redirects back to the Details page for that user.
+        //          - On success, streams the CSV file back to the browser for download.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DownloadInvoiceByPeriod(string id, string period, DateTime referenceDate)
@@ -320,7 +370,10 @@ namespace ST10382638_PROG_POE.Controllers
         }
 
         //------------------------------------------------------------------------------------------------------------------------//
-        // PURPOSE: Shows confirmation page before deleting a user.
+        // PURPOSE: Show a confirmation view before HR permanently removes a user.
+        //          - Loads the user by ID.
+        //          - If no user is found, returns 404 (NotFound).
+        //          - If found, passes the user to the Delete view so HR can confirm.
         public async Task<IActionResult> Delete(string id)
         {
             var user = await _userManager.FindByIdAsync(id);
@@ -330,7 +383,12 @@ namespace ST10382638_PROG_POE.Controllers
         }
 
         //------------------------------------------------------------------------------------------------------------------------//
-        // PURPOSE: Permanently deletes a user; if role = Lecturer, also removes LecturerProfile.
+        // PURPOSE: Perform the actual deletion of a user once HR has confirmed.
+        //          - Loads the user and determines their role.
+        //          - If the user is a Lecturer:
+        //              * Finds and removes the linked LecturerProfile record as well.
+        //          - Deletes the ApplicationUser from Identity.
+        //          - Saves changes and redirects back to the HR dashboard (Index).
         [HttpPost, ActionName("Delete")]
         public async Task<IActionResult> DeleteConfirmed(string id)
         {
