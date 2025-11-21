@@ -23,6 +23,7 @@ namespace ST10382638_PROG_POE.Service
         // Culture used when formatting amounts in evaluation messages (South Africa)
         private static readonly CultureInfo zaCulture = CultureInfo.GetCultureInfo("en-ZA");
 
+        //------------------------------------------------------------------------------------------------------------------------//
         /// <summary>
         /// Evaluates a single <see cref="Claim"/> instance against business rules:
         /// - Hours must be within [0.25, 10.0]

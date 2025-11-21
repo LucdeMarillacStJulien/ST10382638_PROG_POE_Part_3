@@ -29,11 +29,13 @@ namespace ST10382638_PROG_POE.Service
     {
         private readonly AppDbContext _context;
 
+        //------------------------------------------------------------------------------------------------------------------------//
         public LecturerInvoiceReport(AppDbContext context)
         {
             _context = context;
         }
 
+        //------------------------------------------------------------------------------------------------------------------------//
         /// <summary>
         /// Builds a CSV invoice for a single claim.
         /// </summary>
@@ -51,16 +53,13 @@ namespace ST10382638_PROG_POE.Service
 
             var user = claim.LecturerProfile.User;
 
-            // Use en-ZA for dates if desired
             var za = CultureInfo.CreateSpecificCulture("en-ZA");
-            // Use invariant culture for numeric CSV fields so decimals use '.' not ','
             var csvCulture = CultureInfo.InvariantCulture;
 
             var sb = new StringBuilder();
 
             var invoiceNo = $"INV-{claim.SubmittedOn:yyyyMMdd}-{claim.ClaimId:D3}";
 
-            // Header
             sb.AppendLine("Invoice");
             sb.AppendLine($"InvoiceNumber,{invoiceNo}");
             sb.AppendLine($"Lecturer,{user.FirstName} {user.Surname}");
@@ -68,7 +67,6 @@ namespace ST10382638_PROG_POE.Service
             sb.AppendLine($"SubmittedOn,{claim.SubmittedOn:yyyy-MM-dd}");
             sb.AppendLine();
 
-            // Detail row
             sb.AppendLine("ClaimId,HoursWorked,RateAtSubmission,CalculatedAmount,Status,Notes");
 
             var notes = (claim.Notes ?? string.Empty).Replace("\"", "\"\"");
@@ -90,14 +88,11 @@ namespace ST10382638_PROG_POE.Service
             return (bytes, fileName);
         }
 
+        //------------------------------------------------------------------------------------------------------------------------//
         /// <summary>
         /// Builds a CSV invoice for all claims of a lecturer in a period
         /// (day / week / month) based on SubmittedOn.
         /// </summary>
-        /// <param name="userId">ApplicationUser.Id of the lecturer.</param>
-        /// <param name="period">"day", "week", or "month".</param>
-        /// <param name="referenceDate">Reference date for the period.</param>
-        /// <returns>CSV bytes + filename, or null if no matching data.</returns>
         public async Task<(byte[] Content, string FileName)?> BuildPeriodInvoiceAsync(
             string userId,
             string period,
@@ -125,12 +120,10 @@ namespace ST10382638_PROG_POE.Service
             DateTime end;
             string label;
 
-            // Define period ranges based on SubmittedOn date.
             if (periodNorm == "week")
             {
-                // Week = Monday–Sunday containing referenceDate
-                var dayOfWeek = (int)date.DayOfWeek; // Sunday = 0, Monday = 1, ...
-                var offset = dayOfWeek == 0 ? -6 : (1 - dayOfWeek); // move to Monday
+                var dayOfWeek = (int)date.DayOfWeek;
+                var offset = dayOfWeek == 0 ? -6 : (1 - dayOfWeek);
                 start = date.AddDays(offset);
                 end = start.AddDays(7);
                 label = $"week_{start:yyyyMMdd}_{end.AddDays(-1):yyyyMMdd}";
@@ -143,7 +136,6 @@ namespace ST10382638_PROG_POE.Service
             }
             else
             {
-                // Default: a single calendar day
                 start = date;
                 end = date.AddDays(1);
                 label = $"day_{start:yyyyMMdd}";
@@ -162,7 +154,6 @@ namespace ST10382638_PROG_POE.Service
 
             var sb = new StringBuilder();
 
-            // Header
             sb.AppendLine("Invoice Period");
             sb.AppendLine($"Lecturer,{profile.User.FirstName} {profile.User.Surname}");
             sb.AppendLine($"Email,{profile.User.Email}");
@@ -178,7 +169,6 @@ namespace ST10382638_PROG_POE.Service
 
             foreach (var c in claims)
             {
-                // Notes (escaped for CSV)
                 var notes = (c.Notes ?? string.Empty).Replace("\"", "\"\"");
                 if (notes.Contains(',')) notes = $"\"{notes}\"";
 
@@ -191,7 +181,6 @@ namespace ST10382638_PROG_POE.Service
                     $"{c.Status}," +
                     $"{notes}");
 
-                // IMPORTANT: Totals must only include APPROVED invoices
                 if (string.Equals(c.Status, "Approved", StringComparison.OrdinalIgnoreCase))
                 {
                     totalHours += c.HoursWorked;

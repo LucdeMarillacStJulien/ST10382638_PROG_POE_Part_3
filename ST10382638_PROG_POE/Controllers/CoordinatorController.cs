@@ -40,9 +40,8 @@ namespace ST10382638_PROG_POE.Controllers
             _evaluationService = evaluationResult;
         }
 
-        // -------------------------------------------------------------------------
+        //------------------------------------------------------------------------------------------------------------------------//
         // Coordinator dashboard: list all Pending claims with evaluation results
-        // -------------------------------------------------------------------------
         // Loads the logged-in coordinator, queries Pending claims and populates
         // ViewBag with counts, claim list and evaluation results for the view.
         public async Task<IActionResult> Index()
@@ -61,9 +60,9 @@ namespace ST10382638_PROG_POE.Controllers
             var pending = await _context.Claim
                 .Include(c => c.LecturerProfile)
                     .ThenInclude(lp => lp.User)
-                .Include(c => c.SupportingDocs) // allow quick inspection of uploaded files
+                .Include(c => c.SupportingDocs)
                 .Where(c => c.Status != null && c.Status.Trim().ToLower() == "pending")
-                .OrderBy(c => c.SubmittedOn)    // oldest first or adjust as needed for triage
+                .OrderBy(c => c.SubmittedOn)
                 .ToListAsync();
 
             // Run automated evaluation rules for each pending claim
@@ -78,7 +77,7 @@ namespace ST10382638_PROG_POE.Controllers
             ViewBag.CoordinatorEmail = me.Email;
             ViewBag.Evaluations = evaluations;
 
-            // Render dashboard view; model data is supplied via ViewBag
+            // Render dashboard view
             return View();
         }
     }

@@ -29,9 +29,10 @@ namespace ST10382638_PROG_POE.Controllers
         // -------------------------------------------------------------------------
         // Dependencies
         // -------------------------------------------------------------------------
-        private readonly AppDbContext _context;                 // EF Core DbContext for users/claims
-        private readonly ClaimEvaluationService _evaluationService; // Service for automated rule evaluation
+        private readonly AppDbContext _context;
+        private readonly ClaimEvaluationService _evaluationService;
 
+        //------------------------------------------------------------------------------------------------------------------------//
         /// <summary>
         /// Initializes the controller with the application's DbContext.
         /// </summary>
@@ -41,6 +42,7 @@ namespace ST10382638_PROG_POE.Controllers
             _evaluationService = evaluationService;
         }
 
+        //------------------------------------------------------------------------------------------------------------------------//
         /// <summary>
         /// Displays the Program Manager dashboard with all <c>Verified</c> claims.
         /// Provides manager identity (name/email), count of verified items, and the claim list.
@@ -50,16 +52,13 @@ namespace ST10382638_PROG_POE.Controllers
             // Get the currently logged in manager email from Identity
             var email = User?.Identity?.Name;
 
-            // Manager identity is required for personalized dashboard
             if (string.IsNullOrWhiteSpace(email))
                 return BadRequest("Program manager email is required");
 
-            // Load manager user record for header display and navigation context
             var me = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
             if (me == null)
                 return NotFound("Program manager not found");
 
-            // Fetch all Verified claims with lecturer, user identity and supporting docs
             var verified = await _context.Claim
                 .Include(c => c.LecturerProfile)
                     .ThenInclude(lp => lp.User)
@@ -68,19 +67,16 @@ namespace ST10382638_PROG_POE.Controllers
                 .OrderBy(c => c.SubmittedOn)
                 .ToListAsync();
 
-            // Run evaluation rules so the manager can see automated checks per claim
             var evaluations = verified
                 .Select(c => _evaluationService.Evaluate(c))
                 .ToDictionary(r => r.ClaimId, r => r);
 
-            // ViewBag values used by the Program Manager dashboard view
             ViewBag.ProgramManagerName = $"{me.FirstName} {me.Surname}";
             ViewBag.ProgramManagerEmail = me.Email;
             ViewBag.VerifiedCount = verified.Count;
             ViewBag.VerifiedClaims = verified;
             ViewBag.Evaluations = evaluations;
 
-            // Render dashboard view; data provided via ViewBag
             return View();
         }
     }
