@@ -26,6 +26,8 @@ namespace ST10382638_PROG_POE.Controllers
         private readonly AppDbContext _context;
         private readonly LecturerInvoiceReport _invoiceReport;
 
+        //------------------------------------------------------------------------------------------------------------------------//
+        // PURPOSE: Constructor that injects Identity managers, database context and invoice report service.
         public HRController(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, AppDbContext context, LecturerInvoiceReport invoiceReport)
         {
             _userManager = userManager;
@@ -35,6 +37,7 @@ namespace ST10382638_PROG_POE.Controllers
         }
 
         //------------------------------------------------------------------------------------------------------------------------//
+        // PURPOSE: HR dashboard — lists all system users except HR staff.
         public async Task<IActionResult> Index()
         {
             var allUsers = await _userManager.Users.ToListAsync();
@@ -50,12 +53,14 @@ namespace ST10382638_PROG_POE.Controllers
         }
 
         //------------------------------------------------------------------------------------------------------------------------//
+        // PURPOSE: Load blank create-user form for HR to add a new system user.
         public IActionResult Create()
         {
             return View();
         }
 
         //------------------------------------------------------------------------------------------------------------------------//
+        // PURPOSE: Creates a new ApplicationUser and assigns selected role; if Lecturer, creates LecturerProfile.
         [HttpPost]
         public async Task<IActionResult> Create(ApplicationUser input, string role, decimal? HourlyRate)
         {
@@ -99,6 +104,7 @@ namespace ST10382638_PROG_POE.Controllers
         }
 
         //------------------------------------------------------------------------------------------------------------------------//
+        // PURPOSE: Loads user details into edit form (plus lecturer profile if role = Lecturer).
         [HttpGet]
         public async Task<IActionResult> Edit(string id)
         {
@@ -123,6 +129,7 @@ namespace ST10382638_PROG_POE.Controllers
         }
 
         //------------------------------------------------------------------------------------------------------------------------//
+        // PURPOSE: Updates user info, optional password change, and lecturer hourly rate when applicable.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(ApplicationUser input, string? NewPassword, string? ConfirmPassword, decimal? HourlyRate)
@@ -218,6 +225,7 @@ namespace ST10382638_PROG_POE.Controllers
         }
 
         //------------------------------------------------------------------------------------------------------------------------//
+        // PURPOSE: Loads supporting ViewBag information for Edit view (role + lecturer profile).
         private async Task PopulateEditViewBags(ApplicationUser user)
         {
             var roles = await _userManager.GetRolesAsync(user);
@@ -233,6 +241,7 @@ namespace ST10382638_PROG_POE.Controllers
         }
 
         //------------------------------------------------------------------------------------------------------------------------//
+        // PURPOSE: Shows full details of a selected user; if Lecturer, also includes claims summary.
         public async Task<IActionResult> Details(string id)
         {
             if (string.IsNullOrWhiteSpace(id))
@@ -283,6 +292,7 @@ namespace ST10382638_PROG_POE.Controllers
         }
 
         //------------------------------------------------------------------------------------------------------------------------//
+        // PURPOSE: Generates and returns a CSV invoice for a single lecturer claim.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DownloadClaimInvoice(int claimId)
@@ -295,6 +305,7 @@ namespace ST10382638_PROG_POE.Controllers
         }
 
         //------------------------------------------------------------------------------------------------------------------------//
+        // PURPOSE: Generates and returns a CSV invoice for all claims in a given period (day/week/month).
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DownloadInvoiceByPeriod(string id, string period, DateTime referenceDate)
@@ -309,6 +320,7 @@ namespace ST10382638_PROG_POE.Controllers
         }
 
         //------------------------------------------------------------------------------------------------------------------------//
+        // PURPOSE: Shows confirmation page before deleting a user.
         public async Task<IActionResult> Delete(string id)
         {
             var user = await _userManager.FindByIdAsync(id);
@@ -318,6 +330,7 @@ namespace ST10382638_PROG_POE.Controllers
         }
 
         //------------------------------------------------------------------------------------------------------------------------//
+        // PURPOSE: Permanently deletes a user; if role = Lecturer, also removes LecturerProfile.
         [HttpPost, ActionName("Delete")]
         public async Task<IActionResult> DeleteConfirmed(string id)
         {
